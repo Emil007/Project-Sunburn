@@ -20,5 +20,13 @@
     "spessasynth_lib": "^4.4.8",
     "fflate": "^0.8.2"
   },
-  "private": true
+  "private": true,
+  "homepage": "https://emil007.github.io/Project-Sunburn/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Emil007/Project-Sunburn.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Emil007/Project-Sunburn/issues"
+  }
 }

@@ -1,8 +1,12 @@
-# Builds every release target when a version tag (v1.2.3) is pushed and attaches them to a
-# GitHub release. Run it by hand (workflow_dispatch) to just get the artifacts.
+# Builds every release target and publishes a GitHub release.
+#  * push to main with a new "version" in package.json -> release v<version> (tag created here)
+#  * push of a tag v1.2.3                               -> release for that tag
+#  * manual run (workflow_dispatch)                     -> artifacts only, no release
 name: Release
 on:
   push:
+    branches: [main]
+    paths: ['package.json']
     tags: ['v*']
   workflow_dispatch:
 
@@ -10,7 +14,29 @@ permissions:
   contents: write
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      release: ${{ steps.v.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"; echo "release=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          V=$(node -p "require('./package.json').version")
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]] && ! git ls-remote --exit-code --tags origin "refs/tags/v$V" >/dev/null; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
+
   web:
+    needs: version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,12 +51,13 @@ jobs:
           cp -r dist/web project-sunburn-web
           find project-sunburn-web -name '*.map' -delete
           cp README.md MODDING.md project-sunburn-web/
-          zip -qr out/ProjectSunburn-${GITHUB_REF_NAME#v}-web.zip project-sunburn-web
+          zip -qr out/ProjectSunburn-${{ needs.version.outputs.version }}-web.zip project-sunburn-web
           (cd examples && zip -qr ../out/sepia-island-example-mod.zip sepia-island)
       - uses: actions/upload-artifact@v4
         with: { name: web, path: out/* }
 
   desktop:
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -55,8 +82,7 @@ jobs:
         working-directory: electron
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then npm version "$VERSION" --no-git-tag-version --allow-same-version; fi
+          npm version "${{ needs.version.outputs.version }}" --no-git-tag-version --allow-same-version
           npx electron-builder ${{ matrix.args }} --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
@@ -70,13 +96,19 @@ jobs:
             dist/desktop/*.dmg
 
   release:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [web, desktop]
+    if: needs.version.outputs.release == 'true'
+    needs: [version, web, desktop]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with: { path: artifacts, merge-multiple: true }
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ needs.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Project Sunburn ${{ needs.version.outputs.version }}
           files: artifacts/*
           generate_release_notes: true
+          body: |
+            **Downloads:** Windows (`win-x64` / `win-arm64` zip), macOS (`mac-arm64` / `mac-x64` dmg), Linux / Steam Deck (`AppImage`, `tar.gz`, x64 and arm64), web version (`web.zip`, or play at https://emil007.github.io/Project-Sunburn/).
+            You need your own Holiday Island CD image (English or German). See the README for details.

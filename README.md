@@ -125,9 +125,9 @@ cd electron && npm ci
 npx electron-builder --linux AppImage tar.gz --x64 --arm64   # or --win zip / --mac dmg zip
 ```
 
-**Releases are built by GitHub Actions.** Push a tag like `v1.2.0` and `.github/workflows/release.yml`
-builds Windows (x64/arm64), macOS (x64/arm64), Linux (x64/arm64) and the web version, then attaches them to
-a GitHub release. `pages.yml` publishes the web version on GitHub Pages on every push to `main`
+**Releases are built by GitHub Actions.** Raise `"version"` in `package.json` and push to `main` (or push a
+tag like `v1.2.0`): `.github/workflows/release.yml` builds Windows (x64/arm64), macOS (x64/arm64),
+Linux (x64/arm64) and the web version, creates the tag and publishes a GitHub release with all files. `pages.yml` publishes the web version on GitHub Pages on every push to `main`
 (enable it under Settings → Pages → Source: GitHub Actions). `ci.yml` type-checks and builds pull requests.
 
 Tests and tools:
