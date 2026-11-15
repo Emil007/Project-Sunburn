@@ -38,6 +38,10 @@
         <label class="btn secondary"><input type="file" id="filePick" multiple accept=".iso,.img,.bin,.cue,.mdf,.mds"><span data-i18n="chooseFiles">Choose files…</span></label>
       </div>
     </div>
+    <form id="urlForm" class="urlrow">
+      <label for="urlInput" class="muted" data-i18n="urlLabel">Or download it from a link:</label>
+      <div class="urlin"><input type="url" id="urlInput" required autocomplete="url" spellcheck="false"><button class="btn secondary" id="urlGo" type="submit" data-i18n="urlGo">Download</button></div>
+    </form>
     <div id="importStatus" class="status" hidden></div>
   </section>
 
@@ -71,8 +75,8 @@
     <div class="grid">
       <div class="field"><label data-i18n="scaling">Scaling</label>
         <select id="optScale">
-          <option value="fit" data-i18n="scaleFit">Fit to window</option>
-          <option value="pixel" data-i18n="scalePixel">Pixel perfect (integer)</option>
+          <option value="pixel" data-i18n="scalePixel">Sharp – never shrink (recommended)</option>
+          <option value="fit" data-i18n="scaleFit">Fit to window (may blur text)</option>
         </select></div>
       <div class="field"><label data-i18n="aspect">Aspect</label>
         <select id="optAspect"><option value="4:3" data-i18n="keepAspect">Keep</option><option value="stretch" data-i18n="stretch">Fill window</option></select></div>
@@ -82,6 +86,9 @@
       <div class="field"><label><span data-i18n="sfx">Sound effects &amp; speech</span> <output id="sfxOut"></output></label><input type="range" id="optSfx" min="0" max="100"></div>
       <div class="field"><label data-i18n="musicSource">Music source</label>
         <select id="optMusicSrc"><option value="sf2" data-i18n="msSf2">MIDI · GeneralUser GS SoundFont</option><option value="none" data-i18n="msOff">Off</option></select></div>
+      <div class="field wide" id="proxyField"><label for="optProxy" data-i18n="dlProxy">Download proxy (optional)</label>
+        <input type="url" id="optProxy" placeholder="https://my-proxy.example.workers.dev/?url=" spellcheck="false">
+        <small class="muted" data-i18n="dlProxyHelp">Only needed to download discs from sites that block web pages (archive.org works without). See tools/cors-proxy in the repository.</small></div>
     </div>
     <p class="muted small" data-i18n="keysHelp">In game: F11 toggles fullscreen, F10 opens this menu.</p>
   </details>

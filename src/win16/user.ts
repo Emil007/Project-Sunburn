@@ -238,7 +238,26 @@ export class User {
       if (n) this.activate(n.h, false); else this.active = 0;
     }
     if (flags & SWP.HIDEWINDOW && this.focus && (this.focus === wd.h || this.isChildOf(this.get(this.focus), wd))) this.setFocus(0);
+    if (this.view && this.isTop(wd) && nowVis && (moved || sized || !wasVis)) this.keepInView(wd);
     return 1;
+  }
+  // Part of the screen the player can see. When the host window is smaller than the game's screen,
+  // top-level windows are kept inside it so nothing ends up out of reach.
+  view: Rect | null = null; private clamping = false;
+  setVisibleArea(x: number, y: number, w: number, h: number) {
+    const sw = this.desktop.w, sh = this.desktop.h_;
+    this.view = (w <= 0 || h <= 0 || (x <= 0 && y <= 0 && x + w >= sw && y + h >= sh)) ? null : R(x, y, x + w, y + h);
+    if (this.view) for (const t of [...this.tops]) this.keepInView(t);
+  }
+  keepInView(wd: Wnd) {
+    const v = this.view; if (!v || this.clamping || wd.destroyed || wd === this.desktop || !this.isTop(wd) || !(wd.style & WS_VISIBLE) || wd.w <= 0) return;
+    if (wd.maximized) return;
+    // per axis: fits -> pull it fully inside; too big -> leave it if it already spans the view, else align
+    const fit = (p: number, size: number, lo: number, hi: number) => size <= hi - lo ? Math.max(lo, Math.min(p, hi - size)) : (p <= lo && p + size >= hi ? p : lo);
+    const nx = fit(wd.x, wd.w, v.l, v.r), ny = fit(wd.y, wd.h_, v.t, v.b);
+    if (nx === wd.x && ny === wd.y) return;
+    this.clamping = true;
+    try { this.setPos(wd, 0, nx, ny, 0, 0, SWP.NOSIZE | SWP.NOZORDER | SWP.NOACTIVATE); } finally { this.clamping = false; }
   }
   invalidateChildArea(p: Wnd, r: Rect) { this.invalidate(p.h, r, true); }
   isChildOf(c: Wnd | undefined, p: Wnd): boolean { while (c) { if (c === p) return true; c = c.parent || undefined; } return false; }

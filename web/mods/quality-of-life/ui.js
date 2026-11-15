@@ -18,9 +18,10 @@ api.onWheel((dy, dx, shift) => {
 if (api.settings.edge) {
   api.every(120, () => {
     const { x, y, inside } = api.mouse(); if (!inside || drag) return;
-    const W = api.screen().w, H = api.screen().h, m = 3;
-    if (x <= m) api.tapKey(VK_LEFT); else if (x >= W - 1 - m) api.tapKey(VK_RIGHT);
-    if (y <= m) api.tapKey(VK_UP); else if (y >= H - 1 - m) api.tapKey(VK_DOWN);
+    // edges of the part of the screen that is visible (the window can be smaller than the game screen)
+    const v = api.visible ? api.visible() : { x: 0, y: 0, ...api.screen() }, m = 3;
+    if (x <= v.x + m) api.tapKey(VK_LEFT); else if (x >= v.x + v.w - 1 - m) api.tapKey(VK_RIGHT);
+    if (y <= v.y + m) api.tapKey(VK_UP); else if (y >= v.y + v.h - 1 - m) api.tapKey(VK_DOWN);
   });
 }
 

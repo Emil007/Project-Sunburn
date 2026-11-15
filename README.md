@@ -8,6 +8,15 @@
 
 You need your own Holiday Island CD (English or German) as a disc image. No game data is included.
 
+<p align="center">
+  <img src="docs/screenshots/game-desktop.png" alt="Holiday Island with the large island view and a bigger desktop: the overview map and the finance window open next to the map" width="100%">
+</p>
+
+| The original, as in 1996 | Launcher with disc library and mods |
+|---|---|
+| <img src="docs/screenshots/vanilla-game.png" alt="Holiday Island at its original 640×480" width="100%"> | <img src="docs/screenshots/launcher.png" alt="The launcher" width="100%"> |
+| <img src="docs/screenshots/vanilla-menu.png" alt="The new-game menu" width="100%"> | <img src="docs/screenshots/menu-desktop.png" alt="The new-game menu on a bigger desktop" width="100%"> |
+
 > **Disclaimer: 100% AI.** This port (the Win16 runtime, the launcher, the mods, the tools and this
 > documentation) was written entirely by an AI (Claude, by Anthropic), directed and tested by a human.
 > No line of code was written by hand. Expect AI-typical mistakes, and please report what you find.
@@ -35,6 +44,15 @@ the disc you add is, and you can keep both in the library and switch between the
 
 You need the original **Holiday Island CD** (English or German) as a disc image: `.iso`,
 `.bin`+`.cue` or `.mdf`+`.mds`. The port contains no game data.
+
+Add it in the launcher by dropping the files, or paste a **download link** – a download page, an
+archive.org item or a direct link. The launcher finds the disc image behind the link, unpacks `.zip`
+files and keeps only the image. Where it works:
+
+* **Desktop app:** any site. If a page needs a click or a browser check, it opens in a window: start the
+  download there and the launcher takes it over.
+* **Web version:** archive.org and sites that allow downloads from other web pages (CORS). For other sites,
+  download the file yourself and drop it in, or set up the optional [download proxy](tools/cors-proxy).
 
 ### Windows
 Extract `ProjectSunburn-<version>-win-x64.zip` (or `-arm64`) and start `Project Sunburn.exe`.
@@ -75,6 +93,10 @@ storage and restored on the next start.
 
 ### Controls & options
 * **F11**: fullscreen. **F10**: menu (scaling, aspect, volumes, video quality, fullscreen, quit to launcher).
+* The picture is never scaled down: game pixels are shown 1:1 (or 2×, 3× … when there is room, and
+  on high‑DPI screens). A smaller window shows less of the screen instead of a smaller, blurry
+  picture, and game windows that would end up outside are moved back into view. "Fit to window"
+  under Settings → Scaling restores free scaling.
 * The game's own options (music track, volumes, game speed …) work as in the original.
 * Game windows can be dragged by their title bar, as in the original.
 
@@ -150,7 +172,8 @@ electron      Desktop shell (serves the web build with cross‑origin isolation)
 ```
 
 ## Legal
-This repository contains no part of Holiday Island: no code, graphics, sound, music, video or text.
+This repository contains no part of Holiday Island: no code, graphics, sound, music, video or text,
+apart from the screenshots in `docs/screenshots`, which show the game running in this port.
 The game runs from the player's own CD. The port's own code is MIT‑licensed (see `LICENSE`).
 Bundled third‑party components are listed in `THIRD_PARTY_NOTICES.md`.
 

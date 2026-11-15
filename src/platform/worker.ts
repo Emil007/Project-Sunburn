@@ -189,6 +189,7 @@ function run(cfg: StartConfig) {
     post({ t: 'log', s: `stats: ${slices} slices in ${((t - statT) / 1000).toFixed(1)}s, longest slice ${maxSlice.toFixed(0)}ms (incl. idle wait), ${((instr - statInstr) / 1e6).toFixed(1)}M instr, queue ${w.user.queue.length}, capture ${w.user.capture ? w.user.get(w.user.capture)?.cls.name : 'none'}, windows: ${tops}`, level: 'debug' } as any);
     statT = t; statInstr = instr; slices = 0; sliceMs = 0; maxSlice = 0;
   };
+  let viewSeq = 0;
   try {
     while (!w.exited) {
       const s0 = performance.now();
@@ -197,6 +198,7 @@ function run(cfg: StartConfig) {
       stat();
       if (!ok) break;
       rt.tick(performance.now());
+      { const vs = Atomics.load(ctrl, CTRL.VIEWSEQ); if (vs !== viewSeq) { viewSeq = vs; w.user.setVisibleArea(ctrl[CTRL.VIEWX], ctrl[CTRL.VIEWY], ctrl[CTRL.VIEWW], ctrl[CTRL.VIEWH]); } }
       if (Atomics.load(ctrl, CTRL.QUIT)) { w.requestQuit(); Atomics.store(ctrl, CTRL.QUIT, 0); }
       w.present();
       w.mmTick();

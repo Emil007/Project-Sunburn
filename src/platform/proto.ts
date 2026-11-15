@@ -3,6 +3,8 @@ export const CTRL = {
   EVSEQ: 0, EVWRITE: 1, EVREAD: 2, FRAMESEQ: 3, MSGBOX: 4, QUIT: 5, FRAMEW: 6, FRAMEH: 7,
   CURSORSEQ: 8, CURSORW: 9, CURSORH: 10, CURSORHX: 11, CURSORHY: 12, CURSORVIS: 13, MOUSEX: 14, MOUSEY: 15,
   PAUSE: 16, SPEED: 17,
+  // part of the game screen the player can currently see (window smaller than the game screen)
+  VIEWSEQ: 18, VIEWX: 19, VIEWY: 20, VIEWW: 21, VIEWH: 22,
 };
 export const EV_BASE = 64, EV_SIZE = 8, EV_CAP = 512;
 export const CTRL_INTS = EV_BASE + EV_SIZE * EV_CAP;

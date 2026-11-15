@@ -211,6 +211,7 @@ api.click(x, y, button)                   // mouse click at game coordinates
 api.every(ms, fn)                         // repeating timer while the game runs
 api.mouse()                               // { x, y, inside } in game coordinates
 api.screen()                              // { w, h } game resolution
+api.visible()                             // { x, y, w, h } part of the screen inside the window
 api.file(path), api.text(path)            // files of the mod package
 api.onMessage((data) => …)                // data sent by the mod's script.js via api.toUI
 api.overlay()                             // a <div> over the game (pointer-events: none) for your own HTML

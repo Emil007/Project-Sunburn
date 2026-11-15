@@ -1,4 +1,5 @@
 // UI thread: launcher, disc library (OPFS), renderer (WebGL2), audio, MIDI, input.
+import { downloadDisc, clearDownloads, setDownloadProxy } from './download';
 import { CTRL, CTRL_INTS, EV_BASE, EV_CAP, EV_SIZE, EVT, FRAME_MAX, CURSOR_MAX, WorkerMsg } from './proto';
 import { STRINGS } from './i18n';
 import { WorkletSynthesizer, Sequencer } from 'spessasynth_lib';
@@ -11,16 +12,19 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 type Lang = 'en' | 'de';
 
 // ---------------- settings ----------------
-const defaults = { scale: 'fit', aspect: '4:3', video: 'hi', music: 70, sfx: 85, musicSrc: 'sf2', lang: '' as Lang | '', ui: (navigator.language || 'en').startsWith('de') ? 'de' : 'en' };
+const defaults = { scale: 'pixel', aspect: '4:3', video: 'hi', music: 70, sfx: 85, musicSrc: 'sf2', dlProxy: '', lang: '' as Lang | '', ui: (navigator.language || 'en').startsWith('de') ? 'de' : 'en' };
 type Settings = typeof defaults;
 const settings: Settings = { ...defaults, ...(() => { try { return JSON.parse(localStorage.getItem('hi.settings') || '{}'); } catch { return {}; } })() };
-if (settings.scale !== 'fit' && settings.scale !== 'pixel') settings.scale = 'fit'; // filters moved to mods
+if (settings.scale !== 'fit' && settings.scale !== 'pixel') settings.scale = 'pixel'; // filters moved to mods
+// 1.3: the picture is never scaled down any more by default; old installs had "fit" as default
+if (!(settings as any).v || (settings as any).v < 2) { settings.scale = 'pixel'; (settings as any).v = 2; }
 const saveSettings = () => { try { localStorage.setItem('hi.settings', JSON.stringify(settings)); } catch { /* ignore */ } };
 
 const t = (k: string) => (STRINGS[settings.ui as 'en' | 'de'] as any)[k] ?? (STRINGS.en as any)[k] ?? k;
 function applyI18n() {
   document.querySelectorAll<HTMLElement>('[data-i18n]').forEach(el => { const v = t(el.dataset.i18n!); if (v) el.textContent = v; });
   $('uiLang').textContent = settings.ui === 'de' ? 'English' : 'Deutsch';
+  $<HTMLInputElement>('urlInput').placeholder = t('urlPlaceholder');
   document.documentElement.lang = settings.ui;
 }
 
@@ -57,6 +61,11 @@ async function storeDisc(set: DiscSet, progress: (p: number) => void) {
   let done = 0; const total = set.files.reduce((a, f) => a + f.file.size, 0) || 1;
   const stored: { name: string; file: File }[] = [];
   for (const f of set.files) {
+    const src = (f.file as any).__handle;   // downloaded into OPFS already: move instead of copying
+    if (src?.move) {
+      try { await src.move(dir, f.name); stored.push({ name: f.name, file: await (await dir.getFileHandle(f.name)).getFile() }); done += f.file.size; progress(done / total); continue; }
+      catch { /* copy below */ }
+    }
     const h = await dir.getFileHandle(f.name, { create: true });
     const ws = await (h as any).createWritable();
     const reader = f.file.stream().getReader();
@@ -137,6 +146,43 @@ async function importFiles(fl: File[]) {
     }
   }
   renderLibrary();
+}
+
+// ---------------- download from a link ----------------
+let dlAbort: AbortController | null = null;
+async function importUrl(url: string) {
+  const st = $('importStatus'); st.hidden = false; st.className = 'status';
+  const go = $<HTMLButtonElement>('urlGo');
+  if (dlAbort) { dlAbort.abort(); return; }
+  dlAbort = new AbortController(); go.textContent = t('urlCancel');
+  st.innerHTML = `<span></span><div class="progress"><i></i></div>`;
+  const txt = st.querySelector('span')!, bar = st.querySelector('i') as HTMLElement, pb = st.querySelector('.progress') as HTMLElement;
+  hiLog('info', `download from ${url}`);
+  try {
+    const files = await downloadDisc(url, (s, p) => {
+      if (s === 'browse') { txt.textContent = t('dlBrowse'); pb.hidden = true; return; }
+      pb.hidden = false;
+      txt.textContent = s.startsWith('…') ? `${t('dlResolving')} ${s}` : `${t('dlDownloading')} ${s}`;
+      bar.style.width = p === undefined ? '100%' : (p * 100).toFixed(1) + '%'; bar.classList.toggle('indet', p === undefined);
+    }, dlAbort.signal);
+    hiLog('info', `downloaded ${files.map((f) => `${f.name} (${f.size})`).join(', ')}`);
+    await importFiles(files);
+  } catch (e: any) {
+    st.className = 'status err';
+    const m = String(e?.message || e);
+    hiLog('warn', `download failed: ${m}`);
+    if (e?.name === 'AbortError' || m === 'cancelled') st.textContent = t('dlCancelled');
+    else if (m === 'blocked') { st.textContent = t('dlBlocked'); const b = document.createElement('a'); b.className = 'btn secondary'; b.href = e.page || url; b.target = '_blank'; b.rel = 'noopener'; b.textContent = t('dlOpenPage'); st.append(document.createElement('br'), b); }
+    else if (m === 'proxy') st.textContent = t('dlProxyFail');
+    else if (m === 'noLink') st.textContent = t('dlNoLink');
+    else if (m === 'noImage' || m === 'noImageInZip') st.textContent = t('dlNoImage');
+    else if (m === 'badUrl') st.textContent = t('dlBadUrl');
+    else if (m.startsWith('archiveFormat:')) st.textContent = '.' + m.slice(14) + ' ' + t('dlArchive');
+    else st.textContent = `${t('dlFailed')} ${m}`;
+  } finally {
+    dlAbort = null; go.textContent = t('urlGo');
+    void clearDownloads();
+  }
 }
 
 function renderLibrary() {
@@ -285,20 +331,31 @@ class Renderer {
     const dbg = gl.getExtension('WEBGL_debug_renderer_info');
     hiLog('info', `WebGL: ${dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)}; filter: ${this.hasFilter ? this.filterName : 'none'}`);
   }
+  // visible part of the game screen in game pixels (smaller than the screen when the window is too small)
+  visible = { x: 0, y: 0, w: 640, h: 480 };
   resize() {
     const dpr = window.devicePixelRatio || 1; const c = this.canvas;
     const W = Math.round(c.clientWidth * dpr), H = Math.round(c.clientHeight * dpr);
     if (c.width !== W || c.height !== H) { c.width = W; c.height = H; this.dirty = true; }
     let vw: number, vh: number;
     if (settings.aspect === 'stretch') { vw = W; vh = H; }
-    else {
-      let s = Math.min(W / this.w, H / this.h);
-      if (settings.scale === 'pixel') s = Math.max(1, Math.floor(s));
+    else if (settings.scale === 'fit') {
+      const s = Math.min(W / this.w, H / this.h);
       vw = Math.round(this.w * s); vh = Math.round(this.h * s);
+    } else {
+      // pixel exact: whole multiples only and never smaller than the natural size (one game pixel per
+      // CSS pixel, rounded to whole device pixels). A window that is too small shows the middle of
+      // the screen instead of shrinking the picture - resizing changes how much you see, not its size.
+      const s = Math.max(Math.round(dpr), Math.floor(Math.min(W / this.w, H / this.h)), 1);
+      vw = this.w * s; vh = this.h * s;
     }
     const vp = { x: Math.floor((W - vw) / 2), y: Math.floor((H - vh) / 2), w: vw, h: vh, scale: vw / this.w };
     if (vp.x !== this.vp.x || vp.y !== this.vp.y || vp.w !== this.vp.w || vp.h !== this.vp.h) this.dirty = true;
     this.vp = vp;
+    const sx = vw / this.w, sy = vh / this.h;
+    const l = Math.max(0, Math.ceil(-vp.x / sx)), t = Math.max(0, Math.ceil(-vp.y / sy));
+    const r = Math.min(this.w, Math.floor((W - vp.x) / sx)), b = Math.min(this.h, Math.floor((H - vp.y) / sy));
+    this.visible = { x: l, y: t, w: Math.max(1, r - l), h: Math.max(1, b - t) };
   }
   upload(src: Uint8Array, w: number, h: number) {
     const gl = this.gl; const n = w * h * 4; this.stats.uploads++;
@@ -363,7 +420,8 @@ class Renderer {
   toGame(clientX: number, clientY: number): [number, number] {
     const r = this.canvas.getBoundingClientRect(); const dpr = window.devicePixelRatio || 1;
     const x = ((clientX - r.left) * dpr - this.vp.x) / (this.vp.w / this.w), y = ((clientY - r.top) * dpr - this.vp.y) / (this.vp.h / this.h);
-    return [Math.max(0, Math.min(this.w - 1, Math.floor(x))), Math.max(0, Math.min(this.h - 1, Math.floor(y)))];
+    const v = this.visible;
+    return [Math.max(v.x, Math.min(v.x + v.w - 1, Math.floor(x))), Math.max(v.y, Math.min(v.y + v.h - 1, Math.floor(y)))];
   }
 }
 
@@ -385,6 +443,13 @@ function charOf(e: KeyboardEvent): number {
 }
 
 // ---------------- game session ----------------
+// Desktop size for mods that size the game's desktop to the player's screen: as big as the window can
+// get (the whole monitor), in game pixels at the natural scale. A smaller window shows part of it.
+function hostSize() {
+  const dpr = window.devicePixelRatio || 1, k = Math.max(1, Math.round(dpr));
+  const w = Math.max(screen.width || 0, window.innerWidth), h = Math.max(screen.height || 0, window.innerHeight);
+  return { w: Math.round(w * dpr / k), h: Math.round(h * dpr / k) };
+}
 let session: { stop: () => void } | null = null;
 async function startGame() {
   const lang = settings.lang as Lang; const disc = library.get(lang); if (!disc) return;
@@ -401,7 +466,7 @@ async function startGame() {
   let customSf: Uint8Array | null = null;
   for (const m of mods) { const d = (m.manifest.soundfont && fileData(m, m.manifest.soundfont)) || m.files.find((f) => f.path.startsWith('@setting/') && /\.sf[23]$/i.test(String(m.settings[f.path.slice(9)])))?.data; if (d) customSf = d; }
   let renderer: Renderer;
-  try { renderer = new Renderer(canvas, filter); } catch (e: any) { await showModal(t('errTitle'), String(e.message), 0); backToLauncher(); return; }
+  try { renderer = new Renderer(canvas, filter); (window as any).__hi.renderer = renderer; } catch (e: any) { await showModal(t('errTitle'), String(e.message), 0); backToLauncher(); return; }
   const audio = new AudioEngine(); await audio.ctx.resume(); (window as any).__hi.audio = audio;
   const synthP = audio.initSynth((s) => { $('loadingText').textContent = s; }, customSf);
   const ctrlSab = new SharedArrayBuffer(CTRL_INTS * 4), frameSab = new SharedArrayBuffer(FRAME_MAX), cursorSab = new SharedArrayBuffer(CURSOR_MAX);
@@ -439,7 +504,7 @@ async function startGame() {
     }
   };
   void cdTimeline; void cdTracks;
-  worker.postMessage({ t: 'start', ctrlSab, frameSab, cursorSab, files: disc.files, saves, videoHi: settings.video !== 'lo', soundHi: true, screenW: 640, screenH: 480, mods, host: { w: Math.round(window.innerWidth), h: Math.round(window.innerHeight) }, debugInput: !!(window as any).__hiDebugInput });
+  worker.postMessage({ t: 'start', ctrlSab, frameSab, cursorSab, files: disc.files, saves, videoHi: settings.video !== 'lo', soundHi: true, screenW: 640, screenH: 480, mods, host: hostSize(), debugInput: !!(window as any).__hiDebugInput });
 
   // input
   let inside = false;
@@ -470,6 +535,7 @@ async function startGame() {
       every: (ms: number, fn: () => void) => { timers.push(window.setInterval(() => { try { fn(); } catch (e) { console.error(e); } }, Math.max(16, ms))); },
       mouse: () => ({ x: mx, y: my, inside }),
       screen: () => ({ w: renderer.w, h: renderer.h }),
+      visible: () => ({ ...renderer.visible }),
       file: (p: string) => fileData(m, p), text: (p: string) => fileText(m, p),
       onMessage: (fn: (d: any) => void) => { handle.message = fn; },
       overlay: () => { const d = document.createElement('div'); d.className = 'mod-overlay'; game.appendChild(d); return d; },
@@ -553,6 +619,11 @@ async function startGame() {
     if (fs !== lastFrame) { lastFrame = fs; renderer.upload(frame, ctrl[CTRL.FRAMEW] || 640, ctrl[CTRL.FRAMEH] || 480); }
     const cs = Atomics.load(ctrl, CTRL.CURSORSEQ);
     if (cs !== lastCursor) { lastCursor = cs; renderer.uploadCursor(cursorBuf, ctrl[CTRL.CURSORW], ctrl[CTRL.CURSORH], ctrl[CTRL.CURSORHX], ctrl[CTRL.CURSORHY]); }
+    renderer.resize();
+    if ((renderer as any).allocated) { const v = renderer.visible; if (v.x !== ctrl[CTRL.VIEWX] || v.y !== ctrl[CTRL.VIEWY] || v.w !== ctrl[CTRL.VIEWW] || v.h !== ctrl[CTRL.VIEWH]) {
+      ctrl[CTRL.VIEWX] = v.x; ctrl[CTRL.VIEWY] = v.y; ctrl[CTRL.VIEWW] = v.w; ctrl[CTRL.VIEWH] = v.h; Atomics.add(ctrl, CTRL.VIEWSEQ, 1);
+      hiLog('info', `visible area ${v.w}x${v.h}+${v.x}+${v.y} of ${renderer.w}x${renderer.h}`);
+    } }
     renderer.draw(mx, my, ctrl[CTRL.CURSORVIS] !== 0);
     requestAnimationFrame(frameLoop);
   };
@@ -609,10 +680,14 @@ function bindSettings() {
   sel('optScale', 'scale'); sel('optAspect', 'aspect'); sel('optVideo', 'video'); sel('optMusicSrc', 'musicSrc');
   const rng = (id: string, out: string, key: 'music' | 'sfx') => { const el = $<HTMLInputElement>(id); el.value = String(settings[key]); $(out).textContent = settings[key] + '%'; el.oninput = () => { settings[key] = +el.value; $(out).textContent = el.value + '%'; saveSettings(); }; };
   rng('optMusic', 'musicOut', 'music'); rng('optSfx', 'sfxOut', 'sfx');
+  const px = $<HTMLInputElement>('optProxy'); px.value = settings.dlProxy || ''; setDownloadProxy(px.value);
+  px.onchange = () => { settings.dlProxy = px.value.trim(); setDownloadProxy(settings.dlProxy); saveSettings(); };
+  $('proxyField').hidden = /Electron/.test(navigator.userAgent);   // the desktop app needs no proxy
 }
 async function main() {
   applyI18n(); bindSettings();
   $('uiLang').onclick = (e) => { e.preventDefault(); settings.ui = settings.ui === 'de' ? 'en' : 'de'; saveSettings(); applyI18n(); renderLibrary(); renderMods(); };
+  $('urlForm').onsubmit = (e) => { e.preventDefault(); const v = $<HTMLInputElement>('urlInput').value; if (v.trim() || dlAbort) void importUrl(v); };
   const pick = $<HTMLInputElement>('filePick'); pick.onchange = () => { if (pick.files?.length) void importFiles([...pick.files]); pick.value = ''; };
   const dz = $('dropzone');
   dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('over'); });

@@ -43,7 +43,8 @@ api.every(16, () => {
   if (fx === null || Math.abs(fx - m.x) > 2 || Math.abs(fy - m.y) > 2) { fx = m.x; fy = m.y; }   // follow real mouse too
   const k = speed * (scr.w / 640) * (pressed(pad, 4) ? 0.3 : 1) * (pressed(pad, 6) ? 0.3 : 1);
   const dx = curve(pad.axes[0] || 0) * k, dy = curve(pad.axes[1] || 0) * k;
-  if (dx || dy) { fx = Math.max(0, Math.min(scr.w - 1, fx + dx)); fy = Math.max(0, Math.min(scr.h - 1, fy + dy)); api.moveTo(fx, fy); }
+  const v = api.visible ? api.visible() : { x: 0, y: 0, w: scr.w, h: scr.h };
+  if (dx || dy) { fx = Math.max(v.x, Math.min(v.x + v.w - 1, fx + dx)); fy = Math.max(v.y, Math.min(v.y + v.h - 1, fy + dy)); api.moveTo(fx, fy); }
 
   // buttons
   if (a) api.button(0, a === 1);
