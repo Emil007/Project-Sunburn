@@ -1,0 +1,16 @@
+{
+ "id": "gamepad",
+ "name": "Gamepad controls",
+ "name_de": "Gamepad-Steuerung",
+ "version": "1.0",
+ "author": "Project Sunburn",
+ "category": "Interface",
+ "description": "Play with a gamepad or on handhelds like the Steam Deck: left stick moves the mouse pointer, A = left click, B = right click, D-pad or right stick scrolls the island, L1 slows the pointer down, Start opens the menu, Select toggles fullscreen.",
+ "description_de": "Spielen mit Gamepad oder auf Handhelds wie dem Steam Deck: linker Stick bewegt den Mauszeiger, A = Linksklick, B = Rechtsklick, Steuerkreuz oder rechter Stick scrollt die Insel, L1 macht den Zeiger langsamer, Start öffnet das Menü, Select schaltet Vollbild um.",
+ "ui": "ui.js",
+ "recommended": true,
+ "settings": [
+  { "key": "speed", "type": "range", "label": "Pointer speed", "label_de": "Zeigergeschwindigkeit", "min": 1, "max": 20, "default": 8 },
+  { "key": "swap", "type": "toggle", "label": "Swap A and B (Nintendo layout)", "label_de": "A und B tauschen (Nintendo-Belegung)", "default": false }
+ ]
+}

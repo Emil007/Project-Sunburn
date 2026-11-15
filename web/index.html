@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Holiday Island – Project Sunburn</title>
+<link rel="icon" href="icon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#04263f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="style.css">
+<script src="coi.js"></script>
+</head>
+<body>
+<canvas id="backdrop"></canvas>
+
+<main id="launcher">
+  <header class="brand">
+    <div class="logo"><img src="icon.svg" alt=""></div>
+    <div>
+      <div class="project">Project Sunburn</div>
+      <h1>Holiday Island</h1>
+      <p class="tag" data-i18n="tagline">Build the paradise. Keep the tourists happy.</p>
+    </div>
+  </header>
+
+  <section class="card" id="libraryCard">
+    <h2 data-i18n="yourDiscs">Your game discs</h2>
+    <p class="muted" data-i18n="discHelp">Holiday Island needs its original CD. Add an image of your disc — .iso, .bin/.cue or .mdf/.mds — and choose English or German depending on which disc you add. Nothing is uploaded; the files stay on this device.</p>
+    <div id="discList" class="discs"></div>
+    <div id="dropzone" class="drop">
+      <div class="drop-inner">
+        <strong data-i18n="dropHere">Drop disc image files here</strong>
+        <span class="muted" data-i18n="orPick">or</span>
+        <label class="btn secondary"><input type="file" id="filePick" multiple accept=".iso,.img,.bin,.cue,.mdf,.mds"><span data-i18n="chooseFiles">Choose files…</span></label>
+      </div>
+    </div>
+    <div id="importStatus" class="status" hidden></div>
+  </section>
+
+  <section class="card" id="playCard">
+    <div class="row">
+      <div class="field">
+        <label data-i18n="version">Version</label>
+        <div class="seg" id="langSeg"></div>
+      </div>
+      <div class="field grow"></div>
+      <button class="btn primary big" id="playBtn" disabled><span data-i18n="play">Play</span> ▸</button>
+    </div>
+  </section>
+
+  <details class="card" id="modsCard">
+    <summary><span data-i18n="mods">Mods</span> <span class="badge" id="modsCount"></span></summary>
+    <p class="muted small" data-i18n="modsHelp">Without mods the game looks and plays exactly like the 1996 original. Mods add filters, a bigger island view, comfort features and fixes. Changes apply the next time you start the game.</p>
+    <div class="row mods-bar">
+      <div class="seg" id="modPresets"><button data-p="original" data-i18n="presetOriginal">Original</button><button data-p="recommended" data-i18n="presetRecommended">Recommended</button></div>
+      <div class="grow"></div>
+      <label class="btn secondary"><input type="file" id="modZip" accept=".zip"><span data-i18n="addModZip">Add mod (.zip)…</span></label>
+      <label class="btn secondary"><input type="file" id="modDir" webkitdirectory><span data-i18n="addModDir">Add mod folder…</span></label>
+    </div>
+    <div id="modStatus" class="status" hidden></div>
+    <div id="modList" class="modlist"></div>
+    <p class="muted small"><span data-i18n="modsMake">Want to make your own? The mod format is documented in</span> <a href="MODDING.md" target="_blank">MODDING.md</a>.</p>
+  </details>
+
+  <details class="card" id="settingsCard">
+    <summary data-i18n="settings">Settings</summary>
+    <div class="grid">
+      <div class="field"><label data-i18n="scaling">Scaling</label>
+        <select id="optScale">
+          <option value="fit" data-i18n="scaleFit">Fit to window</option>
+          <option value="pixel" data-i18n="scalePixel">Pixel perfect (integer)</option>
+        </select></div>
+      <div class="field"><label data-i18n="aspect">Aspect</label>
+        <select id="optAspect"><option value="4:3" data-i18n="keepAspect">Keep</option><option value="stretch" data-i18n="stretch">Fill window</option></select></div>
+      <div class="field"><label data-i18n="video">Video quality</label>
+        <select id="optVideo"><option value="hi" data-i18n="high">High</option><option value="lo" data-i18n="low">Low</option></select></div>
+      <div class="field"><label><span data-i18n="music">Music</span> <output id="musicOut"></output></label><input type="range" id="optMusic" min="0" max="100"></div>
+      <div class="field"><label><span data-i18n="sfx">Sound effects &amp; speech</span> <output id="sfxOut"></output></label><input type="range" id="optSfx" min="0" max="100"></div>
+      <div class="field"><label data-i18n="musicSource">Music source</label>
+        <select id="optMusicSrc"><option value="sf2" data-i18n="msSf2">MIDI · GeneralUser GS SoundFont</option><option value="none" data-i18n="msOff">Off</option></select></div>
+    </div>
+    <p class="muted small" data-i18n="keysHelp">In game: F11 toggles fullscreen, F10 opens this menu.</p>
+  </details>
+
+  <footer class="muted small">
+    <span data-i18n="footer">Holiday Island © 1996 Sunflowers. This is a compatibility layer — game data comes from your own disc.</span>
+    · <a href="#" id="uiLang">Deutsch</a> · <a href="#" id="saveLog" data-i18n="saveLog">Save log</a><span id="installWrap" hidden> · <a href="#" id="installApp" data-i18n="installApp">Install app</a></span>
+  </footer>
+</main>
+
+<div id="game" hidden>
+  <canvas id="screen" tabindex="0"></canvas>
+  <div id="loading"><div class="spinner"></div><div id="loadingText">Loading…</div></div>
+</div>
+
+<div id="modal" hidden>
+  <div class="dialog">
+    <h3 id="modalTitle"></h3>
+    <p id="modalText"></p>
+    <div class="buttons" id="modalButtons"></div>
+  </div>
+</div>
+
+<div id="drawer" hidden>
+  <div class="dialog wide">
+    <h3 data-i18n="settings">Settings</h3>
+    <div id="drawerBody" class="grid"></div>
+    <div class="buttons"><button class="btn ghost" id="drawerLog" data-i18n="saveLog">Save log</button><button class="btn ghost" id="drawerQuit" data-i18n="quitGame">Quit to launcher</button><button class="btn ghost" id="drawerFull" data-i18n="fullscreen">Fullscreen (F11)</button><button class="btn" id="drawerClose" data-i18n="close">Close</button></div>
+  </div>
+</div>
+
+<script type="module" src="main.js"></script>
+</body>
+</html>

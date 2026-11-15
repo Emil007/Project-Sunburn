@@ -1,0 +1,90 @@
+{
+  "name": "project-sunburn",
+  "productName": "Project Sunburn",
+  "version": "1.2.0",
+  "description": "Project Sunburn: Holiday Island (1996) for modern systems - plays from your original CD",
+  "main": "main.cjs",
+  "author": {
+    "name": "Project Sunburn contributors"
+  },
+  "license": "MIT",
+  "build": {
+    "appId": "org.projectsunburn.app",
+    "productName": "Project Sunburn",
+    "directories": {
+      "output": "../dist/desktop"
+    },
+    "files": [
+      "main.cjs",
+      "web/**/*",
+      "icon.png"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "icon.png",
+      "signAndEditExecutable": false
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "Game",
+      "icon": "icon.png",
+      "executableName": "project-sunburn"
+    },
+    "artifactName": "ProjectSunburn-${version}-${os}-${arch}.${ext}",
+    "publish": null,
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.simulation-games",
+      "icon": "icon.png",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "artifactName": "ProjectSunburn-${version}-mac-${arch}.${ext}"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  }
+}

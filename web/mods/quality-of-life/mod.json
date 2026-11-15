@@ -1,0 +1,38 @@
+{
+ "id": "quality-of-life",
+ "name": "Quality of life",
+ "name_de": "Komfort",
+ "version": "1.0",
+ "author": "Project Sunburn",
+ "category": "Interface",
+ "description": "Scroll the island with the mouse wheel (Shift+wheel scrolls sideways) or by dragging it with the right mouse button, and optionally by pushing the mouse against the screen edge. A right click without dragging works as before.",
+ "description_de": "Insel mit dem Mausrad scrollen (Umschalt+Rad seitwärts) oder mit gedrückter rechter Maustaste ziehen, optional auch durch Bewegen der Maus an den Bildschirmrand. Ein Rechtsklick ohne Ziehen funktioniert wie gewohnt.",
+ "ui": "ui.js",
+ "recommended": true,
+ "settings": [
+  {
+   "key": "wheel",
+   "type": "range",
+   "label": "Wheel scroll steps",
+   "label_de": "Scrollschritte pro Raste",
+   "min": 0,
+   "max": 6,
+   "default": 2
+  },
+  {
+   "key": "rdrag",
+   "type": "toggle",
+   "label": "Drag the island with the right mouse button",
+   "label_de": "Insel mit rechter Maustaste ziehen",
+   "default": true
+  },
+  {
+   "key": "edge",
+   "type": "toggle",
+   "label": "Edge scrolling",
+   "label_de": "Randscrollen",
+   "default": false
+  }
+ ],
+ "script": "script.js"
+}

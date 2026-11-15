@@ -1,0 +1,29 @@
+{
+  "id": "sepia-island",
+  "name": "Sepia island (example)",
+  "name_de": "Sepia-Insel (Beispiel)",
+  "version": "1.0",
+  "author": "Project Sunburn",
+  "category": "Graphics",
+  "description": "Example mod from MODDING.md: an old-photo screen filter, plus a script that recolours the title bar bitmap as the game loads it.",
+  "description_de": "Beispiel-Mod aus MODDING.md: ein Alte-Foto-Filter und ein Skript, das die Titelleiste beim Laden umfärbt.",
+  "shader": "sepia.glsl",
+  "script": "script.js",
+  "conflicts": [
+    "filter-sharp",
+    "filter-smooth",
+    "filter-crt",
+    "filter-edge"
+  ],
+  "settings": [
+    {
+      "key": "amount",
+      "type": "range",
+      "label": "Strength",
+      "label_de": "Stärke",
+      "min": 0,
+      "max": 100,
+      "default": 80
+    }
+  ]
+}

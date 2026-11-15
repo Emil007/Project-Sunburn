@@ -1,0 +1,1 @@
+api.compositor({ trueColorVideo: true });

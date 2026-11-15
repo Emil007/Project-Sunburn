@@ -1,0 +1,9 @@
+{ "id": "modern-windows", "name": "Modern menus", "name_de": "Moderne Menüs", "version": "1.0", "author": "Project Sunburn", "category": "Interface",
+  "description": "Game windows and menus get soft drop shadows, fade in smoothly, and can optionally dim the island behind them.",
+  "description_de": "Spielfenster und Menüs bekommen weiche Schatten, werden sanft eingeblendet und können die Insel dahinter abdunkeln.",
+  "script": "script.js", "recommended": true,
+  "settings": [
+    { "key": "shadows", "type": "toggle", "label": "Drop shadows", "label_de": "Schatten", "default": true },
+    { "key": "fade", "type": "range", "label": "Fade-in (ms)", "label_de": "Einblenden (ms)", "min": 0, "max": 400, "step": 10, "default": 140 },
+    { "key": "dim", "type": "range", "label": "Dim background (%)", "label_de": "Hintergrund abdunkeln (%)", "min": 0, "max": 60, "default": 0 }
+  ] }

@@ -1,0 +1,4 @@
+{ "id": "custom-soundfont", "name": "Custom SoundFont", "name_de": "Eigener SoundFont", "version": "1.0", "author": "Project Sunburn", "category": "Audio",
+  "description": "Play the MIDI music with a SoundFont of your choice (.sf2/.sf3) instead of the bundled GeneralUser GS.",
+  "description_de": "Spielt die MIDI-Musik mit einem SoundFont deiner Wahl (.sf2/.sf3) statt dem mitgelieferten GeneralUser GS.",
+  "settings": [ { "key": "soundfont", "type": "file", "label": "SoundFont file", "label_de": "SoundFont-Datei", "accept": ".sf2,.sf3" } ] }

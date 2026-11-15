@@ -1,0 +1,27 @@
+{
+ "id": "skip-intros",
+ "name": "Skip intro films",
+ "name_de": "Intro-Filme überspringen",
+ "version": "1.0",
+ "author": "Project Sunburn",
+ "category": "Interface",
+ "description": "Gets you into the game faster: skips the intro film (Sunflowers logo and credits) and/or the flight to the island after you press Start.",
+ "description_de": "Schneller ins Spiel: überspringt den Vorspann (Sunflowers-Logo und Mitwirkende) und/oder den Flug zur Insel nach dem Klick auf Start.",
+ "script": "script.js",
+ "settings": [
+  {
+   "key": "logo",
+   "type": "toggle",
+   "label": "Skip intro film",
+   "label_de": "Vorspann überspringen",
+   "default": true
+  },
+  {
+   "key": "title",
+   "type": "toggle",
+   "label": "Skip the flight to the island",
+   "label_de": "Flug zur Insel überspringen",
+   "default": false
+  }
+ ]
+}

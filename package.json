@@ -1,0 +1,24 @@
+{
+  "name": "project-sunburn",
+  "version": "1.2.0",
+  "description": "Project Sunburn: Holiday Island (1996) for modern systems. Win16 runtime, launcher and mods. Bring your own CD.",
+  "scripts": {
+    "build": "node build.mjs",
+    "build:min": "node build.mjs --min",
+    "typecheck": "tsc --noEmit -p .",
+    "harness": "esbuild src/test/harness.ts --bundle --platform=node --outfile=build/harness.js --log-level=warning",
+    "serve": "node tools/serve.mjs",
+    "desktop:prepare": "node build.mjs --min && node tools/prepare-desktop.mjs"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "spessasynth_lib": "^4.4.8",
+    "fflate": "^0.8.2"
+  },
+  "private": true
+}

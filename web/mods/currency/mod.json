@@ -1,0 +1,79 @@
+{
+ "id": "currency",
+ "name": "Currency",
+ "name_de": "Währung",
+ "version": "1.0",
+ "author": "Project Sunburn",
+ "category": "Content",
+ "description": "Replaces the game's currency (DM in the German, £ in the English version) everywhere in the game's texts, e.g. with €. Amounts stay the same – only the symbol changes.",
+ "description_de": "Ersetzt die Währung des Spiels (DM in der deutschen, £ in der englischen Version) in allen Spieltexten, z. B. durch €. Die Beträge bleiben gleich – nur das Zeichen ändert sich.",
+ "script": "script.js",
+ "settings": [
+  {
+   "key": "currency",
+   "type": "select",
+   "label": "Currency",
+   "label_de": "Währung",
+   "default": "€",
+   "options": [
+    {
+     "value": "€",
+     "label": "€ Euro"
+    },
+    {
+     "value": "EUR",
+     "label": "EUR"
+    },
+    {
+     "value": "$",
+     "label": "$ Dollar"
+    },
+    {
+     "value": "£",
+     "label": "£ Pound",
+     "label_de": "£ Pfund"
+    },
+    {
+     "value": "¥",
+     "label": "¥ Yen"
+    },
+    {
+     "value": "CHF",
+     "label": "CHF Franken"
+    },
+    {
+     "value": "öS",
+     "label": "öS Schilling"
+    },
+    {
+     "value": "DM",
+     "label": "DM Deutsche Mark"
+    },
+    {
+     "value": "BTC",
+     "label": "BTC Bitcoin"
+    },
+    {
+     "value": "₿",
+     "label": "₿ Bitcoin"
+    },
+    {
+     "value": "Bits",
+     "label": "Bits"
+    },
+    {
+     "value": "custom",
+     "label": "Custom…",
+     "label_de": "Eigene…"
+    }
+   ]
+  },
+  {
+   "key": "custom",
+   "type": "text",
+   "label": "Custom symbol (for \"Custom…\")",
+   "label_de": "Eigenes Zeichen (für „Eigene…“)",
+   "default": ""
+  }
+ ]
+}

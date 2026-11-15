@@ -1,0 +1,102 @@
+{
+ "id": "large-view",
+ "name": "Large island view",
+ "name_de": "Große Inselansicht",
+ "version": "0.1",
+ "author": "Project Sunburn",
+ "category": "Graphics",
+ "description": "Enlarges the main map so you see much more of the island, and optionally gives you a bigger desktop where the game's windows open next to the map instead of on top of it. All windows, the map included, can be dragged by their title bar. Patches the original map renderer (experimental).",
+ "description_de": "Vergrößert die Hauptkarte, sodass viel mehr von der Insel sichtbar ist, und bietet optional einen größeren Desktop, auf dem die Spielfenster neben der Karte statt darüber aufgehen. Alle Fenster, auch die Karte, lassen sich an der Titelleiste verschieben. Ändert den Original-Kartenrenderer (experimentell).",
+ "script": "script.js",
+ "experimental": true,
+ "settings": [
+  {
+   "key": "size",
+   "type": "select",
+   "label": "Map window size",
+   "label_de": "Größe des Kartenfensters",
+   "default": "1280x800",
+   "options": [
+    {
+     "value": "800x600",
+     "label": "800 × 600"
+    },
+    {
+     "value": "1024x600",
+     "label": "1024 × 600"
+    },
+    {
+     "value": "1024x768",
+     "label": "1024 × 768"
+    },
+    {
+     "value": "1280x720",
+     "label": "1280 × 720"
+    },
+    {
+     "value": "1280x800",
+     "label": "1280 × 800"
+    },
+    {
+     "value": "1366x768",
+     "label": "1366 × 768"
+    },
+    {
+     "value": "1440x900",
+     "label": "1440 × 900"
+    },
+    {
+     "value": "1600x900",
+     "label": "1600 × 900"
+    },
+    {
+     "value": "1680x1050",
+     "label": "1680 × 1050"
+    },
+    {
+     "value": "1920x1080",
+     "label": "1920 × 1080"
+    },
+    {
+     "value": "2560x1440",
+     "label": "2560 × 1440"
+    }
+   ]
+  },
+  {
+   "key": "desktop",
+   "type": "select",
+   "label": "Desktop (space for the game's windows)",
+   "label_de": "Desktop (Platz für die Spielfenster)",
+   "default": "off",
+   "options": [
+    {
+     "value": "off",
+     "label": "Same as the map window",
+     "label_de": "Wie das Kartenfenster"
+    },
+    {
+     "value": "auto",
+     "label": "Fill my screen/window",
+     "label_de": "Bildschirm/Fenster füllen"
+    },
+    {
+     "value": "1600x900",
+     "label": "1600 × 900"
+    },
+    {
+     "value": "1920x1080",
+     "label": "1920 × 1080"
+    },
+    {
+     "value": "2560x1440",
+     "label": "2560 × 1440"
+    },
+    {
+     "value": "3840x2160",
+     "label": "3840 × 2160"
+    }
+   ]
+  }
+ ]
+}
