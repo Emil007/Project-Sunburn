@@ -152,6 +152,13 @@ api.mem      // { r8, r16, w8, w16, lin, ds(), seg(n) } – 16-bit memory (selec
 api.win16    // the whole emulator (advanced; internal, may change)
 api.windows()  // [{ h, cls, x, y, w, h_, visible, setPos(x,y,w,h) }] all game windows
 api.postKey(vk)  // send a key press to the game
+api.call(sel, off, args)  // call a far function of the game, e.g. api.call(seg.sel, 0x2bae, [[ptr32, 4]])
+                          // args: [value, 2 or 4] pairs in Pascal order (pushed first to last); returns DX:AX as one number
+api.disk     // { list(dir), read(path), remove(path) } the game's C: drive (saves); changes are persisted
+api.setSpeed(f)  // game speed factor 0.25 … 10 (scales the game's short timers, < 500 ms)
+api.onDraw((px, w, h) => { … })  // draw on top of each presented frame (Uint32Array RGBA, w×h)
+api.onInput((e) => consumed)     // see input before the game: { type, x, y, button, vk }; return true to swallow it
+api.redraw()     // present a new frame now (e.g. after your onDraw output changed)
 ```
 
 `onFile` paths are upper-case and drive-relative, e.g. `drive === 'D'`, `path === 'GRAFIK\\BUTTON.BMP'`.

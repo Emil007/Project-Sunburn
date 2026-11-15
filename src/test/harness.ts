@@ -29,6 +29,8 @@ const args = process.argv.slice(2);
 if (args.includes('--fixedClock')) (globalThis as any).__fixedClock = true;
 const opt = (k: string, d = '') => { const i = args.indexOf('--' + k); return i >= 0 ? args[i + 1] : d; };
 const langOpt = opt('lang', 'en');
+if (args.includes('--asDebug')) (globalThis as any).__asDebug = true;
+if (opt('stackDos')) (globalThis as any).__stackDos = parseInt(opt('stackDos'), 16);
 if (opt('stackFor')) { (globalThis as any).__stackFor = opt('stackFor'); (globalThis as any).__stackOnce = args.includes('--once'); }
 const maxMs = parseInt(opt('ms', '20000'));
 const outDir = opt('out', 'shots');
@@ -137,7 +139,7 @@ try {
 if (opt('dumpds')) { const [o, n] = opt('dumpds').split(',').map(x => parseInt(x, 16)); const a = w.m.mem.lin(w.mainModule.autoDS, o); const r: string[] = []; for (let i = 0; i < n; i++) { const e = a + i * 10; r.push(`${i}: flag=${w.m.mem.r16(e)} L=${(w.m.mem.r16(e + 2) << 16) >> 16} T=${(w.m.mem.r16(e + 4) << 16) >> 16} W=${w.m.mem.r16(e + 6)} H=${w.m.mem.r16(e + 8)}`); } console.log(r.join('\n')); }
 if (args.includes('--bitmaps')) { for (const [h, o] of w.gdi.objs) if (o.type === 'bitmap' && o.surf && o.surf.w >= 400) console.log('bitmap', h.toString(16), o.surf.w, 'x', o.surf.h); }
 if (opt('find')) { const needle = Buffer.from(opt('find'), 'latin1'); const u8 = w.m.mem.u8; let n = 0; for (let i = 0; i < u8.length - needle.length && n < 20; i++) { let ok = true; for (let j = 0; j < needle.length; j++) if (u8[i + j] !== needle[j]) { ok = false; break; } if (ok) { n++; console.log(`FIND ${opt('find')} at lin ${i.toString(16)} prev=${Buffer.from(u8.subarray(i - 8, i)).toString('hex')}`); } } }
-if (opt('dump')) for (const d of opt('dump').split(',')) { const [sel, off, len] = d.split(':').map((x: string) => parseInt(x, 16)); const a = w.m.mem.lin(sel, off); const b = w.m.mem.u8.subarray(a, a + len); console.log(`DUMP ${d}: ${Buffer.from(b).toString('hex').replace(/(..)/g, '$1 ')}\n  ${Buffer.from(b).toString('latin1').replace(/[^\x20-\x7e]/g, '.')}`); }
+if (opt('dump')) for (const d of opt('dump').split(',')) { const [sel, off, len] = d.split(':').map((x: string) => x === 'DS' ? w.mainModule.autoDS : parseInt(x, 16)); const a = w.m.mem.lin(sel, off); const b = w.m.mem.u8.subarray(a, a + len); console.log(`DUMP ${d}: ${Buffer.from(b).toString('hex').replace(/(..)/g, '$1 ')}\n  ${Buffer.from(b).toString('latin1').replace(/[^\x20-\x7e]/g, '.')}`); }
 console.log(`done: virt ${virtTime | 0}ms real ${Date.now() - t0}ms instr ${cpu.icount} exited=${w.exited}`);
 const dumpWnd = (wd: any, ind: string) => { console.log(`${ind}${wd.h.toString(16)} ${wd.cls.name} "${wd.text}" ${wd.x},${wd.y} ${wd.w}x${wd.h_} style=${(wd.style>>>0).toString(16)} ex=${wd.ex.toString(16)} vis=${(wd.style & 0x10000000)?1:0}`); for (const c of wd.children) dumpWnd(c, ind + '  '); };
 if (args.includes('--wnds')) for (const t of w.user.tops) dumpWnd(t, '');

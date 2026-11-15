@@ -38,6 +38,11 @@ export class User {
   tops: Wnd[] = []; // z-order: index 0 = top
   queue: Msg[] = [];
   timers: Timer[] = [];
+  // game speed: short timers (the game's tick) fire this many times faster; UI delays stay as they are
+  timerScale = 1;
+  private tInt(ms: number) { return ms < 500 && this.timerScale !== 1 ? Math.max(1, ms / this.timerScale) : ms; }
+  // mods can take mouse/keyboard events before the game sees them (return true = consumed)
+  inputFilters: ((e: { type: string; x?: number; y?: number; button?: number }) => boolean)[] = [];
   private nextH = 0x0400;
   focus = 0; active = 0; capture = 0;
   inputTrace: ((s: string) => void) | null = null;
@@ -454,7 +459,7 @@ export class User {
   setTimer(hwnd: number, id: number, ms: number, proc: number): number {
     if (!hwnd) { id = 0x100 + this.timers.length + Math.floor(Math.random() * 1000); }
     this.timers = this.timers.filter(t => !(t.hwnd === hwnd && t.id === id));
-    this.timers.push({ hwnd, id, interval: Math.max(ms, 1), proc, next: this.w.platform.now() + Math.max(ms, 1) });
+    this.timers.push({ hwnd, id, interval: Math.max(ms, 1), proc, next: this.w.platform.now() + this.tInt(Math.max(ms, 1)) });
     return hwnd ? 1 : id;
   }
   killTimer(hwnd: number, id: number) { const n = this.timers.length; this.timers = this.timers.filter(t => !(t.hwnd === hwnd && t.id === id)); return n !== this.timers.length ? 1 : 0; }
@@ -480,6 +485,7 @@ export class User {
     const evs = this.w.platform.pollEvents();
     for (const e of evs) {
       if (e.type === 'quit') { this.w.requestQuit(); continue; }
+      if (this.inputFilters.length) { let used = false; for (const f of this.inputFilters) { try { if (f(e as any)) { used = true; break; } } catch { /* mod error */ } } if (used) { if (e.type === 'mousemove') { this.mouseX = e.x!; this.mouseY = e.y!; } continue; } }
       if (e.type === 'mousemove' || e.type === 'mousedown' || e.type === 'mouseup') {
         this.mouseX = e.x!; this.mouseY = e.y!;
         const btn = e.button || 0;
@@ -556,7 +562,7 @@ export class User {
       const now = this.w.platform.now();
       for (const t of this.timers) {
         if (t.next <= now && (!filterH || t.hwnd === filterH)) {
-          if (remove) { t.next = now + t.interval; }
+          if (remove) { t.next = now + this.tInt(t.interval); }
           return { hwnd: t.hwnd, msg: WM.TIMER, wp: t.id, lp: t.proc, time: now | 0, x: this.mouseX, y: this.mouseY };
         }
       }

@@ -1,0 +1,12 @@
+{
+ "id": "game-speed",
+ "name": "Game speed buttons",
+ "name_de": "Spieltempo-Tasten",
+ "version": "1.0",
+ "author": "Project Sunburn",
+ "category": "Gameplay",
+ "description": "Adds three buttons in front of the date: ▶ normal speed, ▶▶ twice as fast, ▶▶▶ five times as fast. Days, guests and building work all run faster, like on a faster PC.",
+ "description_de": "Fügt vor dem Datum drei Tasten hinzu: ▶ normales Tempo, ▶▶ doppelt so schnell, ▶▶▶ fünfmal so schnell. Tage, Gäste und Bauarbeiten laufen schneller, wie auf einem schnelleren PC.",
+ "script": "script.js",
+ "recommended": true
+}

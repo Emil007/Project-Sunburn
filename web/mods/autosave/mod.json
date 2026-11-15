@@ -1,0 +1,15 @@
+{
+ "id": "autosave",
+ "name": "Autosave",
+ "name_de": "Automatisch speichern",
+ "version": "1.0",
+ "author": "Project Sunburn",
+ "category": "Gameplay",
+ "description": "Saves the game on the 1st of every in-game month as AUTOyymm (e.g. AUTO9603 for March 1996) and keeps the newest ones. Load them like any other save from the file menu.",
+ "description_de": "Speichert das Spiel am 1. jedes Spielmonats als AUTOjjmm (z. B. AUTO9603 für März 1996) und behält die neuesten. Laden wie jeden anderen Spielstand über das Dateimenü.",
+ "script": "script.js",
+ "recommended": true,
+ "settings": [
+  { "key": "keep", "type": "range", "label": "Autosaves to keep", "label_de": "Anzahl behalten", "min": 1, "max": 12, "default": 5 }
+ ]
+}

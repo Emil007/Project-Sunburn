@@ -267,6 +267,7 @@ export function installKernel(w: Win16) {
   };
   const dos = () => {
     const ah = cpu.ah;
+    if ((globalThis as any).__stackDos === ah) { let bp = cpu.bp; const fr: string[] = []; for (let k = 0; k < 14 && bp; k++) { const a = mem.lin(cpu.ss, bp & 0xfffe); fr.push(`${mem.r16(a + 4).toString(16)}:${mem.r16(a + 2).toString(16)}`); bp = mem.r16(a) & 0xfffe; } w.log(`DOSFRAMES ah=${ah.toString(16)} ${JSON.stringify(dsdx())} ${fr.join(' ')}`); }
     if (w.traceDos) w.log(`INT21 ${[0x3c,0x3d,0x43,0x4e,0x41,0x39,0x3b,0x56].includes(ah) ? JSON.stringify(dsdx()) : ''} ah=${ah.toString(16)} al=${cpu.al.toString(16)} bx=${cpu.bx.toString(16)} cx=${cpu.cx.toString(16)} dx=${cpu.dx.toString(16)}`);
     setCF(false);
     switch (ah) {

@@ -46,7 +46,19 @@ export function installMM(w: Win16) {
     if (flags & 1) { if (d.notifyPending) notify(d, 2); /* superseded */ d.notifyWnd = parms ? mem.r16(m.lin(parms)) : 0; d.notifyPending = true; }
   };
 
-  const findFile = (name: string) => { const d = w.vfs.read(name); return d; };
+  // The installer stores "Floatin'.mid" as FLOATIN.MID while the game asks for floatin'.mid: if a file
+  // is missing, accept one in the same folder whose name only differs in punctuation.
+  const findFile = (name: string) => {
+    const d = w.vfs.read(name); if (d) return d;
+    try {
+      const [drv, rel] = w.vfs.resolve(name); const fs = w.vfs.fs(drv); if (!fs) return null;
+      const i = rel.lastIndexOf('\\'); const dir = i < 0 ? '' : rel.slice(0, i); const base = rel.slice(i + 1);
+      const norm = (s: string) => s.toUpperCase().replace(/[^A-Z0-9.]/g, '');
+      const hit = (fs.list(dir) || []).find((e: any) => !e.dir && norm(e.name) === norm(base));
+      if (hit) return w.vfs.read(`${drv}:\\${dir ? dir + '\\' : ''}${hit.name}`);
+    } catch { /* not found */ }
+    return null;
+  };
 
   const startPlay = (d: MciDev, from: number, to: number) => {
     d.startPos = from; d.endPos = to; d.startedAt = now(); d.mode = MODE.PLAY;
@@ -110,17 +122,17 @@ export function installMM(w: Win16) {
       if (w.traceMCI) w.log(`MCI open type=${type} file=${file}`);
       const d: MciDev = { id: nextId++, type, file, notifyWnd: 0, notifyPending: false, mode: MODE.STOP, timeFmt: type === 'avivideo' ? 3 : type === 'cdaudio' ? 10 : 0, startedAt: 0, startPos: 0, endPos: 0, pos: 0, lengthMs: 0, hwnd: 0, dest: null };
       if (type === 'sequencer') {
-        const data = file ? findFile(file) : null; if (!data) return 275; // MCIERR_FILE_NOT_FOUND
+        const data = file ? findFile(file) : null; if (!data) { w.log(`MCI: file not found: ${file}`); return 275; } // MCIERR_FILE_NOT_FOUND
         d.smf = data; d.lengthMs = P.midi.lengthMs(data);
       } else if (type === 'avivideo') {
-        const data = file ? findFile(file) : null; if (!data) return 275;
+        const data = file ? findFile(file) : null; if (!data) { w.log(`MCI: file not found: ${file}`); return 275; }
         const a = parseAVI(data); if (!a) return 296;
         d.avi = new AVIPlayer(a); d.lengthMs = d.avi.lengthMs;
       } else if (type === 'cdaudio') {
         if (!P.cd) return 271; // MCIERR_DEVICE_NOT_READY? use generic
         const lens = P.cd.trackLengths(); d.lengthMs = lens.reduce((a, b) => a + b, 0);
       } else if (type === 'waveaudio') {
-        const data = file ? findFile(file) : null; if (!data) return 275; const pcm = parseWav(data) || { rate: 22050, channels: 1, data: new Float32Array(1) };
+        const data = file ? findFile(file) : null; if (!data) { w.log(`MCI: file not found: ${file}`); return 275; } const pcm = parseWav(data) || { rate: 22050, channels: 1, data: new Float32Array(1) };
         (d as any).pcm = pcm; d.lengthMs = pcm.data.length / pcm.channels / pcm.rate * 1000;
       } else return 263; // MCIERR_INVALID_DEVICE_NAME
       devs.set(d.id, d);

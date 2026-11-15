@@ -36,6 +36,8 @@ export class ModRuntime {
   tickHooks: ((now: number) => void)[] = [];
   apiWraps: { name: string; fn: (args: number[], orig: (a: number[]) => any) => any }[] = [];
   startHooks: (() => void)[] = [];
+  drawHooks: ((px: Uint32Array, w: number, h: number) => void)[] = [];
+  inputFilters: ((e: any) => boolean)[] = [];
   screen: { w: number; h: number } | null = null;
   host = { w: 1280, h: 800 };
   toUI: (data: any) => void = () => {};   // delivers to ui.js scripts (api.onMessage)   // size of the player's window/screen in CSS pixels (set by the platform)
@@ -85,6 +87,23 @@ export class ModRuntime {
       get win16() { return rt.w; },
       get mem() { return rt.memApi(); },
       windows: () => rt.windows(),
+      // game speed: the game's short timers (its tick) run this many times faster (1 = normal)
+      setSpeed: (f: number) => { rt.w.user.timerScale = Math.max(0.25, Math.min(10, +f || 1)); },
+      // draw on top of the composed frame: fn(pixels: Uint32Array ABGR, width, height)
+      onDraw: (fn: (px: Uint32Array, w: number, h: number) => void) => { rt.drawHooks.push(fn); if (rt.w) rt.w.drawHooks.push(fn); },
+      // see input before the game: fn({ type: 'mousemove'|'mousedown'|'mouseup'|'keydown'|'keyup', x, y, button, vk }) -> true to consume
+      onInput: (fn: (e: any) => boolean) => { rt.inputFilters.push(fn); if (rt.w) rt.w.user.inputFilters.push(fn); },
+      // ask for a new frame (after changing what onDraw draws)
+      redraw: () => { if (rt.w) (rt.w as any).lastPresent = 0; },
+      // call game code (far pascal procedure). Only do this from a safe point, e.g. inside a wrapped
+      // USER.GetMessage / USER.PeekMessage at the top-level message loop. args: [value, bytes][]
+      call: (sel: number, off: number, args: [number, number][] = []) => rt.w.m.callFar((((sel & 0xffff) << 16) | (off & 0xffff)) >>> 0, args, rt.w.mainModule.autoDS),
+      // the game's hard disk (C:\HOLIDAY ...): list a folder, read, delete. Changes are saved like the game's own files.
+      disk: {
+        list: (dir: string) => (rt.w.vfs.fs('C')?.list(dir.replace(/^C:\\/i, '')) || []).map((e: any) => ({ name: e.name, dir: !!e.dir, size: e.size })),
+        read: (p: string) => rt.w.vfs.read(/^[a-z]:/i.test(p) ? p : 'C:\\' + p),
+        remove: (p: string) => { const f: any = rt.w.vfs.fs('C'); return !!f?.remove?.(p.replace(/^C:\\/i, '')); },
+      },
       postKey: (vk: number, ch = 0) => { rt.w.user.queue.push({ hwnd: rt.w.user.focus || rt.w.user.active, msg: 0x100, wp: vk, lp: 1, time: 0, x: 0, y: 0, ch } as any); rt.w.user.queue.push({ hwnd: rt.w.user.focus || rt.w.user.active, msg: 0x101, wp: vk, lp: 0xc0000001, time: 0, x: 0, y: 0 } as any); },
     };
   }
@@ -109,6 +128,7 @@ export class ModRuntime {
   attach(w: Win16) {
     this.w = w;
     if (this.compositor) w.compositor = this.compositor;
+    w.drawHooks.push(...this.drawHooks); w.user.inputFilters.push(...this.inputFilters);
     // API wrapping
     for (const wr of this.apiWraps) {
       const [mod, name] = wr.name.split('.');

@@ -104,6 +104,8 @@ export class Win16 {
   // ---- compose and present ----
   compositor: { shadows?: boolean; fadeMs?: number; dim?: number; trueColorVideo?: boolean; excludeClasses?: string[] } = {};
   overlays: ((screen: Surface) => void)[] = [];
+  // mods: draw on top of the composed frame (32-bit ABGR pixels, screen size)
+  drawHooks: ((px: Uint32Array, w: number, h: number) => void)[] = [];
   private lut15: Uint8Array | null = null; private lutVer = -1;
   private nearest15(rgb: number) {
     if (!this.lut15 || this.lutVer !== this.gdi.palVersion) {
@@ -171,6 +173,7 @@ export class Win16 {
         }
       }
     }
+    for (const d of this.drawHooks) { try { d(o32, W, H); } catch { /* mod error */ } }
     this.platform.present(out, W, H, pal, this.user.cursorVisible ? this.cursorImage(this.user.cursor) : null, this.user.mouseX, this.user.mouseY);
     this.composeDirty = false;
   }
