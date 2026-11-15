@@ -313,13 +313,16 @@ export class GDI {
     let bits = bitsLin;
     let rle: Uint8Array | null = null;
     if (info.comp === 1 || info.comp === 2) { rle = decodeRLE(u8, bitsLin, w, H, info.comp === 1 ? 8 : 4); }
+    // only the part that lands on the destination (a broken header must not mean billions of iterations)
+    const xs = Math.max(0, -dstX), xe = Math.min(w, dst.w - dstX);
+    if (xe <= xs || n <= 0 || n > 65536) return;
     for (let row = 0; row < n; row++) {
       const scan = startScan + row; // scan index from bottom
       const y = topDown ? scan : H - 1 - scan;
       const dy = y + dstY; if (dy < 0 || dy >= dst.h) continue;
       const src = bits + row * stride; const drow = dy * dst.w;
-      for (let x = 0; x < w; x++) {
-        const dx = x + dstX; if (dx < 0 || dx >= dst.w) continue;
+      for (let x = xs; x < xe; x++) {
+        const dx = x + dstX;
         let v: number;
         if (rle) v = rle[(H - 1 - scan) * w + x] ?? 0;
         else if (bpp === 8) v = u8[src + x];
@@ -336,6 +339,7 @@ export class GDI {
 }
 
 function decodeRLE(u8: Uint8Array, p: number, w: number, h: number, bpp: number): Uint8Array {
+  if (w <= 0 || h <= 0 || w * h > 1 << 26) return new Uint8Array(0); // broken header
   const out = new Uint8Array(w * h); let x = 0, y = 0; // y from bottom
   for (let guard = 0; guard < w * h * 4 && y < h; guard++) {
     const a = u8[p++], b = u8[p++];

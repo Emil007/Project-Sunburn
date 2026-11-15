@@ -93,15 +93,20 @@ export class Machine {
     return vals;
   }
 
+  curApi = 0; apiHook?: (id: number, cs: number, ip: number) => void;
+  apiName(id: number) { return id ? this.natives[id - 1]?.name || '?' : ''; }
   private dispatchNative(id: number) {
     const d = this.natives[id];
     const cpu = this.cpu;
     if (d.ret === 'reg') { d.fn([]); cpu.retf(0); return; }
     const args = this.readArgs(d, 4);
     if (this.apiTrace) this.log(`API ${d.name}(${args.map(a => a.toString(16)).join(',')}) from ${cpu.stk16(2).toString(16)}:${cpu.stk16(0).toString(16)}`);
-    if ((globalThis as any).__stackFor === d.name) { const w: string[] = []; for (let i = 0; i < 64; i++) w.push(cpu.stk16(i * 2).toString(16)); this.log(`STACK ${d.name}: ${w.join(' ')} bp=${cpu.bp.toString(16)}`); let bp = cpu.bp; const fr: string[] = []; for (let k = 0; k < 12 && bp; k++) { const a = this.mem.lin(cpu.ss, bp & 0xfffe); const ob = this.mem.r16(a), ip = this.mem.r16(a + 2), cs = this.mem.r16(a + 4); fr.push(`${cs.toString(16)}:${ip.toString(16)}`); bp = ob & 0xfffe; } this.log(`FRAMES ${fr.join(' ')}`); }
+    if ((globalThis as any).__stackFor && ((globalThis as any).__stackFor === d.name || (globalThis as any).__stackFor === d.name + '@' + cpu.stk16(2).toString(16) + ':' + cpu.stk16(0).toString(16)) && !((globalThis as any).__stackOnce && (globalThis as any).__stackDone)) { (globalThis as any).__stackDone = true; const w: string[] = []; for (let i = 0; i < 64; i++) w.push(cpu.stk16(i * 2).toString(16)); this.log(`STACK ${d.name}: ${w.join(' ')} bp=${cpu.bp.toString(16)}`); let bp = cpu.bp; const fr: string[] = []; for (let k = 0; k < 12 && bp; k++) { const a = this.mem.lin(cpu.ss, bp & 0xfffe); const ob = this.mem.r16(a), ip = this.mem.r16(a + 2), cs = this.mem.r16(a + 4); fr.push(`${cs.toString(16)}:${ip.toString(16)}`); bp = ob & 0xfffe; } this.log(`FRAMES ${fr.join(' ')}`); }
     this.callHistory.push(d.name); if (this.callHistory.length > 64) this.callHistory.shift();
+    // which API is running (for the hang watchdog); nested calls restore the outer one
+    const prevApi = this.curApi; this.curApi = id + 1; this.apiHook?.(this.curApi, cpu.stk16(2), cpu.stk16(0));
     const r = d.fn(args);
+    this.curApi = prevApi; this.apiHook?.(prevApi, 0, 0);
     if (d.ret === 'w') { cpu.ax = (r ?? 0) & 0xffff; }
     else if (d.ret === 'l') { const v = (r ?? 0) >>> 0; cpu.ax = v & 0xffff; cpu.dx = v >>> 16; }
     if (this.apiTrace && d.ret !== 'v') this.log(`  -> ${(r ?? 0).toString(16)}`);

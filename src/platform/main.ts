@@ -381,7 +381,7 @@ class Renderer {
     const W = Math.round(c.clientWidth * dpr), H = Math.round(c.clientHeight * dpr);
     if (c.width !== W || c.height !== H) { c.width = W; c.height = H; this.dirty = true; }
     let vw: number, vh: number;
-    if (settings.aspect === 'stretch') { vw = W; vh = H; }
+    if (settings.scale === 'fit' && settings.aspect === 'stretch') { vw = W; vh = H; }
     else if (settings.scale === 'fit') {
       const s = Math.min(W / this.w, H / this.h);
       vw = Math.round(this.w * s); vh = Math.round(this.h * s);
@@ -489,9 +489,17 @@ function charOf(e: KeyboardEvent): number {
 // Desktop size for mods that size the game's desktop to the player's screen: as big as the window can
 // get (the whole monitor), in game pixels at the natural scale. A smaller window shows part of it.
 function hostSize() {
+  // devicePixelRatio includes the browser zoom, screen.* does not; innerWidth is in zoomed CSS pixels.
+  // Estimate the zoom from outer/inner width (snapped to the browser's zoom steps) to get the monitor
+  // size in device pixels.
   const dpr = window.devicePixelRatio || 1, k = Math.max(1, Math.round(dpr));
-  const w = Math.max(screen.width || 0, window.innerWidth), h = Math.max(screen.height || 0, window.innerHeight);
-  return { w: Math.round(w * dpr / k), h: Math.round(h * dpr / k) };
+  const steps = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
+  const ratio = window.outerWidth && window.innerWidth ? window.outerWidth / window.innerWidth : 1;
+  const zoom = steps.reduce((a, b) => Math.abs(b - ratio) < Math.abs(a - ratio) ? b : a, 1);
+  const sys = dpr / zoom; // OS scaling
+  const w = Math.max((screen.width || 0) * sys, window.innerWidth * dpr), h = Math.max((screen.height || 0) * sys, window.innerHeight * dpr);
+  hiLog('info', `host size: screen ${screen.width}x${screen.height}, window ${window.innerWidth}x${window.innerHeight}, dpr ${dpr.toFixed(2)}, zoom ~${zoom}`);
+  return { w: Math.round(w / k), h: Math.round(h / k) };
 }
 let session: { stop: () => void } | null = null;
 async function startGame() {
@@ -518,6 +526,7 @@ async function startGame() {
   await synthP;
   $('loadingText').textContent = t('starting');
   const worker = new Worker('worker.js');
+  let apiNames: string[] = [];
   let alive = true; let mx = 0, my = 0; let lastFrame = 0, lastCursor = 0; let lastMove = performance.now();
   const pushEv = (type: number, x = 0, y = 0, b = 0, vk = 0, ch = 0) => {
     const wpos = Atomics.load(ctrl, CTRL.EVWRITE); const o = EV_BASE + (wpos % EV_CAP) * EV_SIZE;
@@ -538,6 +547,7 @@ async function startGame() {
       case 'cdtrack': audio.cdTrack(m.idx, m.pcm); break;
       case 'cd': if (m.op === 'play') audio.cdPlay(m.idx, m.offset, m.dur); else audio.cdStop(); break;
       case 'msgbox': { hiLog('game', `message box "${m.caption}": ${m.text}`); const r = await showModal(m.caption, m.text, m.type); Atomics.store(ctrl, CTRL.MSGBOX, r); Atomics.notify(ctrl, CTRL.MSGBOX); break; }
+      case 'apinames': apiNames = m.names; break;
       case 'persist': persistQueue.push(persistSave(lang, m.path, m.data).catch(() => {})); break;
       case 'title': document.title = (m.s || 'Holiday Island') + ' – Project Sunburn'; break;
       case 'log': hiLog(m.level || 'game', m.s); break;
@@ -671,6 +681,25 @@ async function startGame() {
     requestAnimationFrame(frameLoop);
   };
   requestAnimationFrame(frameLoop);
+
+  // watchdog: the worker bumps a heartbeat between slices of game code and while it waits. If it stops,
+  // the emulator is stuck inside one of its own functions (or the worker died): say where, in the log.
+  let heart = -1, heartT = performance.now(), hung = false;
+  const watchdog = setInterval(() => {
+    if (!alive) return;
+    const h = Atomics.load(ctrl, CTRL.HEART), now = performance.now();
+    const waiting = Atomics.load(ctrl, CTRL.MSGBOX) === -1 || Atomics.load(ctrl, CTRL.PAUSE) !== 0 || heart < 0 && h === 0;
+    if (h !== heart || waiting) { if (hung && h !== heart) hiLog('warn', 'emulator responds again'); heart = h; heartT = now; hung = false; return; }
+    if (!hung && now - heartT > 8000) {
+      hung = true;
+      const api = ctrl[CTRL.APINOW], hex = (v: number) => (v & 0xffff).toString(16);
+      hiLog('error', `emulator not responding for ${((now - heartT) / 1000).toFixed(0)}s: ${api ? `inside ${apiNames[api - 1] || '#' + api} called from ${hex(ctrl[CTRL.APICS])}:${hex(ctrl[CTRL.APIIP])}` : 'not inside an API'}, game code last at ${hex(ctrl[CTRL.GAMECS])}:${hex(ctrl[CTRL.GAMEIP])}`);
+      toast(t('hangToast'), 15000);
+    }
+  }, 1000);
+  timers.push(watchdog as unknown as number);
+  worker.onerror = (e) => { hiLog('error', `emulator worker error: ${e.message || e} ${e.filename || ''}:${e.lineno || ''}`); };
+  worker.onmessageerror = () => hiLog('error', 'emulator worker message error');
 
   const stop = () => {
     if (!alive) return; alive = false; quitHandler = null;

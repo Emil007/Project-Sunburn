@@ -49,6 +49,13 @@ export function buildInstall(disc: Disc, opts: InstallOptions = { videoHi: true,
   if (!C.read('HOLIDAY\\HOLIDAY.EXE')) throw new Error('HOLIDAY.EXE not found in installer archive.');
   // the English release copies the expansion folder to disk
   if (disc.dirs.has('UPGRADE')) for (const [p] of disc.files) if (p.startsWith('UPGRADE\\')) C.add('HOLIDAY\\' + p, disc.readFile(p)!);
+  // The German archive lacks some sound files (HIGHSCOR.WAV) that the original installer copied from the
+  // CD's SOUND folders. Without it, opening Sound\highscor.wav fails; the game never checks that error,
+  // so Pascal's pending I/O error made every later text-file read do nothing (empty option labels).
+  for (const dir of ['SOUND', 'SOUNDLO']) {
+    if (!disc.dirs.has(dir)) continue;
+    for (const [p] of disc.files) if (p.startsWith(dir + '\\') && !C.read('HOLIDAY\\' + p)) C.add('HOLIDAY\\' + p, disc.readFile(p)!);
+  }
   // setup.dat: CD path, speech on CD, graphics on CD, film quality, sound
   const setup = `D:\\\r\n1\r\n1\r\n${opts.videoHi ? 'H' : 'L'}\r\n${opts.soundHi ? 'H' : 'L'}\r\n`;
   C.add('HOLIDAY\\SETUP.DAT', new TextEncoder().encode(setup));

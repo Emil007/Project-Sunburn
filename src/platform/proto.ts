@@ -5,6 +5,8 @@ export const CTRL = {
   PAUSE: 16, SPEED: 17,
   // part of the game screen the player can currently see (window smaller than the game screen)
   VIEWSEQ: 18, VIEWX: 19, VIEWY: 20, VIEWW: 21, VIEWH: 22,
+  // watchdog: heartbeat counter, API currently running (+1, 0 = none) and where it was called from
+  HEART: 23, APINOW: 24, APICS: 25, APIIP: 26, GAMECS: 27, GAMEIP: 28,
 };
 export const EV_BASE = 64, EV_SIZE = 8, EV_CAP = 512;
 export const CTRL_INTS = EV_BASE + EV_SIZE * EV_CAP;

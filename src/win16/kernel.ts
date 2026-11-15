@@ -248,7 +248,7 @@ export function installKernel(w: Win16) {
   const findState = new Map<number, { list: { name: string; dir: boolean; size: number }[]; idx: number; attr: number }>();
   let findSeq = 1;
   const setCF = (on: boolean) => { cpu.flags = on ? cpu.flags | CF : cpu.flags & ~CF; };
-  const err = (code: number) => { cpu.ax = code; setCF(true); };
+  const err = (code: number) => { if (w.traceDos) w.log(`  -> DOS error ${code}`); cpu.ax = code; setCF(true); };
   const dsdx = () => mem.readCStr(cpu.ds, cpu.dx);
   const writeFind = (st: { list: { name: string; dir: boolean; size: number }[]; idx: number; attr: number }, id: number): boolean => {
     while (st.idx < st.list.length) {

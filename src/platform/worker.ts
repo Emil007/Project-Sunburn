@@ -176,9 +176,13 @@ function run(cfg: StartConfig) {
   rt.attach(w);
   w.user.inputTrace = (s) => post({ t: 'log', s: 'input: ' + s, level: 'input' } as any);
   w.load(inst.exePath, inst.C.read('HOLIDAY\\HOLIDAY.EXE')!);
+  // watchdog support: the UI thread notices when the heartbeat stops and reports the running API
+  w.m.apiHook = (id, cs, ip) => { ctrl[CTRL.APINOW] = id; if (id) { ctrl[CTRL.APICS] = cs; ctrl[CTRL.APIIP] = ip; } };
+  { const origWait = platform.wait.bind(platform); platform.wait = (ms: number) => { Atomics.add(ctrl, CTRL.HEART, 1); origWait(ms); }; }
   rt.applyLoad();
   w.begin();
   const cpu = w.m.cpu;
+  post({ t: 'apinames', names: w.m.natives.map((d: any) => d.name) } as any);
   post({ t: 'log', s: `started: screen ${scr.w}x${scr.h}, language ${inst.lang}, mods: ${rt.mods.map((m) => m.manifest.id).join(', ') || 'none'}` });
   // periodic health line for the log: emulator speed, message queue, windows
   let statT = performance.now(), statInstr = 0, slices = 0, sliceMs = 0, maxSlice = 0;
@@ -186,13 +190,14 @@ function run(cfg: StartConfig) {
     const t = performance.now(); if (t - statT < 5000) return;
     const instr = cpu.icount;
     const tops = w.user.tops.filter((x: any) => x.style & 0x10000000).slice(0, 6).map((x: any) => `${x.cls.name}${(x.style & 0x08000000) ? '(disabled)' : ''}`).join(' > ');
-    post({ t: 'log', s: `stats: ${slices} slices in ${((t - statT) / 1000).toFixed(1)}s, longest slice ${maxSlice.toFixed(0)}ms (incl. idle wait), ${((instr - statInstr) / 1e6).toFixed(1)}M instr, queue ${w.user.queue.length}, capture ${w.user.capture ? w.user.get(w.user.capture)?.cls.name : 'none'}, windows: ${tops}`, level: 'debug' } as any);
+    post({ t: 'log', s: `stats: ${slices} slices in ${((t - statT) / 1000).toFixed(1)}s, longest slice ${maxSlice.toFixed(0)}ms (incl. idle wait), ${((instr - statInstr) / 1e6).toFixed(1)}M instr, queue ${w.user.queue.length}, capture ${w.user.capture ? w.user.get(w.user.capture)?.cls.name : 'none'}, windows: ${tops}, gdi ${w.gdi.objs.size} objects/${w.gdi.dcs.size} DCs`, level: 'debug' } as any);
     statT = t; statInstr = instr; slices = 0; sliceMs = 0; maxSlice = 0;
   };
   let viewSeq = 0;
   try {
     while (!w.exited) {
       const s0 = performance.now();
+      Atomics.add(ctrl, CTRL.HEART, 1); ctrl[CTRL.GAMECS] = cpu.cs; ctrl[CTRL.GAMEIP] = cpu.ip;
       const ok = w.runSlice(20000);
       const d = performance.now() - s0; slices++; sliceMs += d; if (d > maxSlice) maxSlice = d;
       stat();
