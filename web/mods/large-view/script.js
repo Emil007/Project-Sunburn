@@ -180,6 +180,10 @@ const chrome = {
   'BUTTON.BMP':   { x: [DW, 0, 75, 13], planks: true },
   'SCROWEOS.BMP': { x: [DW - 16 - 219 + 3, 20, 79, 62] }, // horizontal scrollbar track
   'SCRONOSU.BMP': { y: [VH, 17, 79, 62] },                // vertical scrollbar track
+  // the buffer the game saves the map background into before it draws build outlines, floating money
+  // and other temporary sprites (624x406 on the CD): too small for the enlarged view, which left
+  // outlines and money smears behind outside the original 624x405 area
+  'SECOND.BMP':   { x: [VW, 0, 0, 624], y: [VH + 1, 0, 0, 406] },
 };
 function extendBmp(d, spec) {
   const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
@@ -208,7 +212,7 @@ function extendBmp(d, spec) {
 }
 api.onFile((drive, path, read) => {
   const m = /(?:^|\\)GRAFIK\\([^\\]+)$/.exec(path);
-  const spec = m && chrome[m[1]];
+  const spec = m && chrome[m[1].toUpperCase()];
   if (!spec) return null;
   const orig = read();
   const r = orig ? extendBmp(orig, spec) : null;

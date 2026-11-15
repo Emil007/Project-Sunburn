@@ -77,6 +77,7 @@ export function installGdiApi(w: Win16) {
   });
   G(34, 'BitBlt', ['word', 's_word', 's_word', 's_word', 's_word', 'word', 's_word', 's_word', 'long'], 'w', ([hd, x, y, cw, ch, hs, sx, sy, rop]) => {
     const dc = D(hd); if (!dc) return 0; const src = hs ? D(hs) || null : null;
+    if ((globalThis as any).__bltDbg) console.log(`  blt dst ${dc.surface.w}x${dc.surface.h} bmp ${dc.hbitmap.toString(16)} src ${src ? src.surface.w + 'x' + src.surface.h + ' bmp ' + src.hbitmap.toString(16) : '-'}`);
     gdi.blit(dc, gdi.lx(dc, x), gdi.ly(dc, y), gdi.sx(dc, cw), gdi.sy(dc, ch), src, src ? gdi.lx(src, sx) : 0, src ? gdi.ly(src, sy) : 0, rop, src ? gdi.sx(src, cw) : undefined, src ? gdi.sy(src, ch) : undefined);
     return 1;
   });

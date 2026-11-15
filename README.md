@@ -89,7 +89,10 @@ Disc images are imported once into the browser's private storage (OPFS). Nothing
 
 ### Saves
 Savegames (`MAPS\*.MAP`), high scores and other files the game writes are kept per language in private
-storage and restored on the next start.
+storage and restored on the next start. **Export saves** / **Import saves** next to each disc in the
+launcher move them as a `.zip` (or single `.MAP` files). The format is the game's own and the same in
+the English and the German release, so saves can go from one version to the other, between the web and
+the desktop app, between devices, and to or from the original game's `MAPS` folder.
 
 ### Controls & options
 * **F11**: fullscreen. **F10**: menu (scaling, aspect, volumes, video quality, fullscreen, quit to launcher).

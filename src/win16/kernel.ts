@@ -277,7 +277,7 @@ export function installKernel(w: Win16) {
       case 0x25: return;
       case 0x35: cpu.loadSeg(ES, 0); cpu.bx = 0; return;
       case 0x2a: { const d = new Date(); cpu.cx = d.getFullYear(); cpu.dx = ((d.getMonth() + 1) << 8) | d.getDate(); cpu.al = d.getDay(); return; }
-      case 0x2c: { const d = new Date(); cpu.cx = (d.getHours() << 8) | d.getMinutes(); cpu.dx = (d.getSeconds() << 8) | Math.floor(d.getMilliseconds() / 10); return; }
+      case 0x2c: { const d = (globalThis as any).__fixedClock ? new Date(2000, 0, 1, 12, 0, 0, 0) : new Date(); cpu.cx = (d.getHours() << 8) | d.getMinutes(); cpu.dx = (d.getSeconds() << 8) | Math.floor(d.getMilliseconds() / 10); return; }
       case 0x30: cpu.ax = 0x1606; cpu.bx = 0; cpu.cx = 0; return;
       case 0x33: cpu.dx = cpu.dx & 0xff00; return;
       case 0x36: { cpu.ax = 64; cpu.bx = 0x8000; cpu.cx = 512; cpu.dx = 0xffff; return; }

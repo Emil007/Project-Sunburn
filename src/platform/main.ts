@@ -2,6 +2,7 @@
 import { downloadDisc, clearDownloads, setDownloadProxy } from './download';
 import { CTRL, CTRL_INTS, EV_BASE, EV_CAP, EV_SIZE, EVT, FRAME_MAX, CURSOR_MAX, WorkerMsg } from './proto';
 import { STRINGS } from './i18n';
+import { zipSync, unzipSync } from 'fflate';
 import { WorkletSynthesizer, Sequencer } from 'spessasynth_lib';
 
 import { hiLog, saveLog, logText } from './log';
@@ -148,6 +149,41 @@ async function importFiles(fl: File[]) {
   renderLibrary();
 }
 
+// ---------------- savegame export / import ----------------
+// Saves are the game's own files (HOLIDAY\MAPS\*.MAP, ...), the same format in the English and the
+// German release and in the original game. A zip moves them between versions, devices, the web and the
+// desktop app, or to a real Windows 3.1 install.
+async function exportSaves(lang: Lang) {
+  const files = await loadSaves(lang);
+  if (!files.length) { await showModal(t('savesTitle'), t('savesNone'), 0); return; }
+  const z: Record<string, Uint8Array> = {};
+  for (const f of files) z[f.path.replace(/\\/g, '/')] = f.data;
+  const blob = new Blob([zipSync(z, { level: 6 }) as BlobPart], { type: 'application/zip' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `ProjectSunburn-saves-${lang}-${new Date().toISOString().slice(0, 10)}.zip`;
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  hiLog('info', `exported ${files.length} save files (${lang})`);
+}
+async function importSaves(lang: Lang, picked: File[]) {
+  const out: { path: string; data: Uint8Array }[] = [];
+  const add = (p: string, d: Uint8Array) => {
+    const parts = p.replace(/\\/g, '/').split('/').filter((x) => x && x !== '.' && x !== '..');
+    if (!parts.length) return;
+    const name = parts[parts.length - 1].toUpperCase();
+    if (/\.MAP$/.test(name) && !/^HOLIDAY$/i.test(parts[0])) { out.push({ path: 'HOLIDAY\\MAPS\\' + name, data: d }); return; }  // loose savegame
+    if (/^HOLIDAY$/i.test(parts[0])) out.push({ path: parts.map((x) => x.toUpperCase()).join('\\'), data: d });
+  };
+  for (const f of picked) {
+    const d = new Uint8Array(await f.arrayBuffer());
+    if (/\.zip$/i.test(f.name)) { for (const [p, v] of Object.entries(unzipSync(d))) if (!p.endsWith('/')) add(p, v); }
+    else add(f.name, d);
+  }
+  if (!out.length) { await showModal(t('savesTitle'), t('savesNoneFound'), 0); return; }
+  for (const f of out) await persistSave(lang, f.path, f.data);
+  hiLog('info', `imported ${out.length} save files into ${lang}: ${out.map((f) => f.path).join(', ')}`);
+  await showModal(t('savesTitle'), t('savesImported').replace('{n}', String(out.length)).replace('{v}', lang === 'de' ? t('verDe') : t('verEn')), 0);
+}
+
 // ---------------- download from a link ----------------
 let dlAbort: AbortController | null = null;
 async function importUrl(url: string) {
@@ -191,6 +227,13 @@ function renderLibrary() {
     const d = library.get(lang); if (!d) continue;
     const el = document.createElement('div'); el.className = 'disc';
     el.innerHTML = `<div class="flag">${lang === 'de' ? '🇩🇪' : '🇬🇧'}</div><div class="meta"><b>${lang === 'de' ? 'Holiday Island (Deutsch)' : 'Holiday Island (English)'}</b><span>${d.files.map(f => f.name).join(', ')} · ${(d.size / 1048576).toFixed(0)} MB</span></div>`;
+    const ex = document.createElement('button'); ex.className = 'btn ghost small'; ex.textContent = t('savesExport'); ex.title = t('savesHelp');
+    ex.onclick = () => void exportSaves(lang);
+    const im = document.createElement('label'); im.className = 'btn ghost small'; im.title = t('savesHelp');
+    const inp = document.createElement('input'); inp.type = 'file'; inp.multiple = true; inp.accept = '.zip,.map,.MAP'; inp.hidden = true;
+    inp.onchange = () => { if (inp.files?.length) void importSaves(lang, [...inp.files]); inp.value = ''; };
+    im.append(inp, document.createTextNode(t('savesImport')));
+    el.append(ex, im);
     const rm = document.createElement('button'); rm.className = 'btn danger'; rm.textContent = t('remove');
     rm.onclick = async () => { if (confirm(t('removeConfirm'))) { await removeDisc(lang); renderLibrary(); } };
     el.appendChild(rm); list.appendChild(el);

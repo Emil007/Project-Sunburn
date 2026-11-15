@@ -98,7 +98,8 @@ export class Machine {
     const cpu = this.cpu;
     if (d.ret === 'reg') { d.fn([]); cpu.retf(0); return; }
     const args = this.readArgs(d, 4);
-    if (this.apiTrace) this.log(`API ${d.name}(${args.map(a => a.toString(16)).join(',')})`);
+    if (this.apiTrace) this.log(`API ${d.name}(${args.map(a => a.toString(16)).join(',')}) from ${cpu.stk16(2).toString(16)}:${cpu.stk16(0).toString(16)}`);
+    if ((globalThis as any).__stackFor === d.name) { const w: string[] = []; for (let i = 0; i < 64; i++) w.push(cpu.stk16(i * 2).toString(16)); this.log(`STACK ${d.name}: ${w.join(' ')} bp=${cpu.bp.toString(16)}`); let bp = cpu.bp; const fr: string[] = []; for (let k = 0; k < 12 && bp; k++) { const a = this.mem.lin(cpu.ss, bp & 0xfffe); const ob = this.mem.r16(a), ip = this.mem.r16(a + 2), cs = this.mem.r16(a + 4); fr.push(`${cs.toString(16)}:${ip.toString(16)}`); bp = ob & 0xfffe; } this.log(`FRAMES ${fr.join(' ')}`); }
     this.callHistory.push(d.name); if (this.callHistory.length > 64) this.callHistory.shift();
     const r = d.fn(args);
     if (d.ret === 'w') { cpu.ax = (r ?? 0) & 0xffff; }

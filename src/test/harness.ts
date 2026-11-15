@@ -26,8 +26,10 @@ function addDir(fsys: MemFS, dir: string, prefix: string) {
 }
 
 const args = process.argv.slice(2);
+if (args.includes('--fixedClock')) (globalThis as any).__fixedClock = true;
 const opt = (k: string, d = '') => { const i = args.indexOf('--' + k); return i >= 0 ? args[i + 1] : d; };
 const langOpt = opt('lang', 'en');
+if (opt('stackFor')) (globalThis as any).__stackFor = opt('stackFor');
 const maxMs = parseInt(opt('ms', '20000'));
 const outDir = opt('out', 'shots');
 fs.mkdirSync(outDir, { recursive: true });
@@ -42,7 +44,7 @@ const platform: Platform = {
   now: () => virtTime,
   wait: (ms) => { virtTime += Math.max(ms, 1); waitTotal += Math.max(ms, 1); if (virtTime > maxMs) { (globalThis as any).W?.exit(0); } },
   pollEvents: () => { while (script.length && script[0].at <= virtTime) events.push(script.shift()!.ev); return events.splice(0); },
-  present: (rgba, w, h) => { lastFrame = rgba; lastW = w; lastH = h; if (virtTime >= nextShot) { fs.writeFileSync(path.join(outDir, `t${String(Math.floor(virtTime / 1000)).padStart(4, '0')}.png`), png(rgba, w, h)); nextShot = virtTime + shotEvery; } },
+  present: (rgba, w, h) => { lastFrame = rgba; lastW = w; lastH = h; if (virtTime >= nextShot) { fs.writeFileSync(path.join(outDir, `t${String(Math.floor(virtTime)).padStart(7, '0')}.png`), png(rgba, w, h)); nextShot = virtTime + shotEvery; } },
   setCursor: () => {},
   messageBox: (t, c, ty) => { console.log(`MESSAGEBOX [${c}] ${t} type=${ty}`); const k = ty & 0xf; return k === 0 ? 1 : k === 4 ? 7 : k === 2 ? 3 : 2; },
   log: (s) => { logLines.push(s); if (!opt('quiet')) console.log(s); },
@@ -80,6 +82,8 @@ if (opt('disc')) {
 }
 rt = new ModRuntime(modList, lang, (s) => console.log(s), opt('host') ? { w: +opt('host').split('x')[0], h: +opt('host').split('x')[1] } : undefined);
 for (const [p, d] of rt.overlayHD) C.add('HOLIDAY\\' + p, d);
+if (opt('writes')) { const wd = opt('writes'); C.onWrite = (p: string, d: Uint8Array | null) => { const f = path.join(wd, p.replace(/\\/g, '/')); fs.mkdirSync(path.dirname(f), { recursive: true }); if (d) fs.writeFileSync(f, d); else if (fs.existsSync(f)) fs.unlinkSync(f); }; }
+if (opt('restore')) { const rd = opt('restore'); const walk = (d: string, pre: string) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) walk(path.join(d, e.name), pre + e.name + '\\'); else C.add(pre + e.name, new Uint8Array(fs.readFileSync(path.join(d, e.name)))); } }; walk(rd, ''); }
 const scr = rt.screen || { w: res[0], h: res[1] };
 const w = new Win16(platform, { screenW: scr.w, screenH: scr.h }); (globalThis as any).W = w;
 w.vfs.mount('D', rt.wrapFS('D', Dfs));
@@ -87,6 +91,7 @@ w.vfs.mount('C', C);
 w.vfs.curDrive = 'C'; w.vfs.curDir.set('C', 'HOLIDAY');
 w.traceFiles = args.includes('--files'); w.traceDos = args.includes('--dos'); w.m.apiTrace = args.includes('--api'); w.traceMCI = args.includes('--mci'); w.traceFree = args.includes('--free');
 const exe = C.read('HOLIDAY\\HOLIDAY.EXE')!;
+if (args.includes('--input')) w.user.inputTrace = (s) => console.log(`t=${virtTime | 0} input: ${s}`);
 rt.attach(w);
 w.load('C:\\HOLIDAY\\HOLIDAY.EXE', exe);
 rt.applyLoad();
@@ -106,6 +111,7 @@ try {
   while (!w.exited && virtTime < maxMs) {
     if (opt('corruptAt') && virtTime >= parseInt(opt('corruptAt')) && !(globalThis as any).corrupted) { (globalThis as any).corrupted = 1; const a = w.m.mem.lin(w.mainModule.autoDS, 0x7804); console.log('corrupting, old sel', w.m.mem.r16(a).toString(16)); w.m.mem.w16(a, 0x3ff7); }
     if (opt('fixAt') && virtTime >= parseInt(opt('fixAt')) && (globalThis as any).corrupted === 1) { (globalThis as any).corrupted = 2; }
+    if (opt('apiFrom') && virtTime >= +opt('apiFrom') && !w.m.apiTrace) { w.m.apiTrace = true; (globalThis as any).__bltDbg = true; console.log('API TRACE ON segs ' + w.mainModule.segSels.map((s: number, i: number) => (i + 1) + '=' + s.toString(16)).join(' ')); }
     if (!w.runSlice(10000)) break;
     rt.tick(virtTime);
     virtTime += 0.5; // ~20M instr/s virtual speed
