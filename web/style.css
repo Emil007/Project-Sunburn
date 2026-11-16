@@ -117,3 +117,5 @@ footer { text-align: center; margin-top: auto; } footer a { color: var(--muted);
 .saverow { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; background: rgba(127,127,127,.12); }
 .saverow .meta { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .saverow .meta span { font-size: 12px; opacity: .75; }
+.field[hidden] { display: none !important; }
+.field label.chk { justify-content: flex-start; }
