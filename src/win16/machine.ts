@@ -93,6 +93,18 @@ export class Machine {
     return vals;
   }
 
+  /** APIs currently running (outermost first), for hang reports */
+  apiStack: string[] = [];
+  /** called every 256k instructions while game code runs inside an API (nested), e.g. for watchdog dumps */
+  pulse?: () => void;
+  /** human-readable state for hang reports: registers, BP frame chain, running APIs, recent calls */
+  dumpState(segName: (sel: number) => string): string {
+    const c = this.cpu, h = (v: number) => (v & 0xffff).toString(16);
+    let bp = c.bp; const fr: string[] = [];
+    for (let k = 0; k < 16 && bp; k++) { let a: number; try { a = this.mem.lin(c.ss, bp & 0xfffe); } catch { break; } const ob = this.mem.r16(a); fr.push(`${segName(this.mem.r16(a + 4))}:${h(this.mem.r16(a + 2))}`); if ((ob & 0xfffe) <= (bp & 0xfffe)) break; bp = ob & 0xfffe; }
+    return `CS:IP=${segName(c.cs)}:${h(c.curInstIp)} AX=${h(c.ax)} BX=${h(c.bx)} CX=${h(c.cx)} DX=${h(c.dx)} SI=${h(c.si)} DI=${h(c.di)} BP=${h(c.bp)} SP=${h(c.sp)} DS=${h(c.ds)} ES=${h(c.es)}\n` +
+      `frames (near/far mixed): ${fr.join(' ')}\nrunning APIs: ${this.apiStack.join(' > ') || 'none'}\nrecent APIs: ${this.callHistory.slice(-30).join(' ')}`;
+  }
   curApi = 0; apiHook?: (id: number, cs: number, ip: number) => void;
   apiName(id: number) { return id ? this.natives[id - 1]?.name || '?' : ''; }
   private dispatchNative(id: number) {
@@ -105,7 +117,9 @@ export class Machine {
     this.callHistory.push(d.name); if (this.callHistory.length > 64) this.callHistory.shift();
     // which API is running (for the hang watchdog); nested calls restore the outer one
     const prevApi = this.curApi; this.curApi = id + 1; this.apiHook?.(this.curApi, cpu.stk16(2), cpu.stk16(0));
-    const r = d.fn(args);
+    this.apiStack.push(`${d.name}(${args.map(a => a.toString(16)).join(',')}) from ${cpu.stk16(2).toString(16)}:${cpu.stk16(0).toString(16)}`);
+    let r: number | void;
+    try { r = d.fn(args); } finally { this.apiStack.pop(); }
     this.curApi = prevApi; this.apiHook?.(prevApi, 0, 0);
     if (d.ret === 'w') { cpu.ax = (r ?? 0) & 0xffff; }
     else if (d.ret === 'l') { const v = (r ?? 0) >>> 0; cpu.ax = v & 0xffff; cpu.dx = v >>> 16; }
@@ -137,6 +151,7 @@ export class Machine {
     const d0 = ++cpu.depth;
     while (cpu.depth >= d0) {
       if (cpu.halted) throw new ExitSignal();
+      if ((cpu.icount & 0x3ffff) === 0 && this.pulse) this.pulse();
       try { cpu.step(); }
       catch (e) { if (e instanceof CPUFault && this.faultHook(e)) continue; throw e; }
     }

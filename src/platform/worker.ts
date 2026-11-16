@@ -178,6 +178,11 @@ function run(cfg: StartConfig) {
   w.load(inst.exePath, inst.C.read('HOLIDAY\\HOLIDAY.EXE')!);
   // watchdog support: the UI thread notices when the heartbeat stops and reports the running API
   w.m.apiHook = (id, cs, ip) => { ctrl[CTRL.APINOW] = id; if (id) { ctrl[CTRL.APICS] = cs; ctrl[CTRL.APIIP] = ip; } };
+  const segName = (sel: number) => { const i = w.mainModule.segSels.indexOf(sel); return i >= 0 ? 'seg' + (i + 1) : sel.toString(16); };
+  w.m.pulse = () => {
+    ctrl[CTRL.GAMECS] = w.m.cpu.cs; ctrl[CTRL.GAMEIP] = w.m.cpu.ip;
+    if (Atomics.load(ctrl, CTRL.DUMPREQ)) { Atomics.store(ctrl, CTRL.DUMPREQ, 0); post({ t: 'log', s: 'hang dump: ' + w.m.dumpState(segName), level: 'error' } as any); }
+  };
   { const origWait = platform.wait.bind(platform); platform.wait = (ms: number) => { Atomics.add(ctrl, CTRL.HEART, 1); origWait(ms); }; }
   rt.applyLoad();
   w.begin();

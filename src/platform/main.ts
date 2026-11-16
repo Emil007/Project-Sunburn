@@ -684,12 +684,18 @@ async function startGame() {
 
   // watchdog: the worker bumps a heartbeat between slices of game code and while it waits. If it stops,
   // the emulator is stuck inside one of its own functions (or the worker died): say where, in the log.
-  let heart = -1, heartT = performance.now(), hung = false;
+  let heart = -1, heartT = performance.now(), hung = false, dumps = 0;
   const watchdog = setInterval(() => {
     if (!alive) return;
     const h = Atomics.load(ctrl, CTRL.HEART), now = performance.now();
     const waiting = Atomics.load(ctrl, CTRL.MSGBOX) === -1 || Atomics.load(ctrl, CTRL.PAUSE) !== 0 || heart < 0 && h === 0;
-    if (h !== heart || waiting) { if (hung && h !== heart) hiLog('warn', 'emulator responds again'); heart = h; heartT = now; hung = false; return; }
+    if (h !== heart || waiting) { if (hung && h !== heart) hiLog('warn', 'emulator responds again'); heart = h; heartT = now; hung = false; dumps = 0; return; }
+    // while hung, ask the worker three times (1 s apart) where the game code is running
+    if (hung && dumps < 4) {
+      if (dumps === 3 && Atomics.load(ctrl, CTRL.DUMPREQ)) hiLog('error', 'no hang dump: the emulator is stuck in its own code, not in game code');
+      if (dumps < 3) Atomics.store(ctrl, CTRL.DUMPREQ, 1);
+      dumps++;
+    }
     if (!hung && now - heartT > 8000) {
       hung = true;
       const api = ctrl[CTRL.APINOW], hex = (v: number) => (v & 0xffff).toString(16);

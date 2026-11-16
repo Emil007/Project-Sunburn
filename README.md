@@ -120,6 +120,7 @@ next start.
 | Quality of life *(recommended)* | Scroll the island with the mouse wheel or by dragging with the right mouse button, optional edge scrolling. |
 | Autosave *(recommended)* | Saves on the 1st of every in‑game month as `AUTOyymm` and keeps the newest 5 (adjustable). Load them like any other save. |
 | Game speed *(recommended)* | Three buttons in front of the date, drawn in the game's own style: ▶ normal, ▶▶ 2×, ▶▶▶ 5×, with tooltips. |
+| Unlock all buildings | Off by default. Every building is in the build menus from day one instead of appearing during the game. Optional: build the auction landmarks (Stonehenge, Eiffel Tower, …) from the Attractions menu at their auction starting price. |
 | Cheat without penalty | Off by default. The original money cheat (hold **Ctrl + Shift + Alt** and press **G**: +1,000,000,000) marks your game and you can no longer win. With this mod you keep the money and can still win. |
 | Skip intros | Skip the intro film and/or the flight to the island after Start. |
 | Custom SoundFont | Play the music with your own .sf2/.sf3. |
