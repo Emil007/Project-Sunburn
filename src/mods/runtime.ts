@@ -88,7 +88,7 @@ export class ModRuntime {
       get mem() { return rt.memApi(); },
       windows: () => rt.windows(),
       // game speed: the game's short timers (its tick) run this many times faster (1 = normal)
-      setSpeed: (f: number) => { rt.w.user.timerScale = Math.max(0.25, Math.min(10, +f || 1)); },
+      setSpeed: (f: number, onlyInterval = 0) => { rt.w.user.timerScale = Math.max(0.25, Math.min(10, +f || 1)); rt.w.user.timerScaleOnly = Math.max(0, onlyInterval | 0); },
       // draw on top of the composed frame: fn(pixels: Uint32Array ABGR, width, height)
       onDraw: (fn: (px: Uint32Array, w: number, h: number) => void) => { rt.drawHooks.push(fn); if (rt.w) rt.w.drawHooks.push(fn); },
       // see input before the game: fn({ type: 'mousemove'|'mousedown'|'mouseup'|'keydown'|'keyup', x, y, button, vk }) -> true to consume

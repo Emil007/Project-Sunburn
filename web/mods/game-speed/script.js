@@ -1,7 +1,9 @@
 // Game speed buttons, drawn into the main window's info bar in front of the date (in the empty wood
 // plank), in the style of the game's own buttons, with a tooltip in the game's font.
-// Speed = the game's short timers (its tick) fire faster; see api.setSpeed.
+// Speed = the game's own 100 ms tick timer fires faster (the same thing the German release's hidden
+// Ctrl+Shift+Alt+N/M keys do by changing that timer's interval). Films and other timers keep their speed.
 const SPEEDS = [1, 2, 5];
+const TICK = 100; // interval of the game's tick timer (ms)
 const TIPS = api.lang === 'de'
   ? ['Normales Tempo', 'Schnell (2x)', 'Sehr schnell (5x)']
   : ['Normal speed', 'Fast (2x)', 'Very fast (5x)'];
@@ -114,7 +116,7 @@ api.onInput((e) => {
   // mouseup
   if (pressed < 0) return false;
   const p = pressed; pressed = -1;
-  if (i === p) { speed = p; api.setSpeed(SPEEDS[p]); api.log(`speed ${SPEEDS[p]}x`); }
+  if (i === p) { speed = p; api.setSpeed(SPEEDS[p], TICK); api.log(`speed ${SPEEDS[p]}x`); }
   api.redraw();
   return true;
 });

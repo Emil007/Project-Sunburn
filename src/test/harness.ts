@@ -112,12 +112,28 @@ if (opt('watch')) {
   cpu.trace = (c) => { if (prev) prev(c); if (wa < 0) { wa = lin(); if (wa < 0) return; last = w.m.mem.r16(wa); } const v = w.m.mem.r16(wa); if (v !== last) { console.log(`WATCH ${opt('watch')} ${last.toString(16)} -> ${v.toString(16)} t=${virtTime | 0} after seg${w.mainModule.segSels.indexOf(pcs) + 1}:${pip.toString(16)} (cs=${pcs.toString(16)})`); last = v; } pcs = c.cs; pip = c.ip; };
 }
 let lastStepTime = 0;
+const longest = { ms: 0, instr: 0 };
+process.on('exit', () => { if (longest.ms > 500) console.log(`longest slice ${longest.ms.toFixed(0)}ms, ${(longest.instr / 1e6).toFixed(1)}M instr = ${(longest.instr / longest.ms / 1e3).toFixed(1)}M instr/s`); });
+const prof = new Map<number, number>(); let profOn = false;
+if (opt('profFrom')) {
+  const prev = cpu.trace;
+  const ops = new Float64Array(512); const u8 = w.m.mem.u8;
+  cpu.trace = (c) => { if (prev) prev(c); if (profOn) { const k = (c.cs << 16) | (c.ip & 0xffc0); prof.set(k, (prof.get(k) || 0) + 1); let a = c.sb[1] + c.ip, o = u8[a]; while (o === 0x26 || o === 0x2e || o === 0x36 || o === 0x3e || o === 0x66 || o === 0x67 || o === 0xf3 || o === 0xf2) o = u8[++a]; ops[o === 0x0f ? 256 + u8[a + 1] : o]++; } };
+  process.on('exit', () => { const t = ops.reduce((a, b) => a + b, 0); console.log('OPS ' + [...ops.keys()].sort((a, b) => ops[b] - ops[a]).slice(0, 40).map((k) => (k >= 256 ? '0f' + (k - 256).toString(16) : k.toString(16)) + ':' + (ops[k] / t * 100).toFixed(1)).join(' ')); });
+  process.on('exit', () => {
+    const tot = [...prof.values()].reduce((a, b) => a + b, 0); console.log(`PROF ${(tot / 1e6).toFixed(1)}M instr sampled`);
+    for (const [k, v] of [...prof.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40)) { const cs = k >>> 16, seg = w.mainModule.segSels.indexOf(cs) + 1; console.log(`  ${(v / tot * 100).toFixed(1)}% ${seg ? 'seg' + seg : 'cs' + cs.toString(16)}:${(k & 0xffff).toString(16)}`); }
+  });
+}
 try {
   while (!w.exited && virtTime < maxMs) {
     if (opt('corruptAt') && virtTime >= parseInt(opt('corruptAt')) && !(globalThis as any).corrupted) { (globalThis as any).corrupted = 1; const a = w.m.mem.lin(w.mainModule.autoDS, 0x7804); console.log('corrupting, old sel', w.m.mem.r16(a).toString(16)); w.m.mem.w16(a, 0x3ff7); }
     if (opt('fixAt') && virtTime >= parseInt(opt('fixAt')) && (globalThis as any).corrupted === 1) { (globalThis as any).corrupted = 2; }
     if (opt('apiFrom') && virtTime >= +opt('apiFrom') && !w.m.apiTrace) { w.m.apiTrace = true; (globalThis as any).__bltDbg = true; console.log('API TRACE ON segs ' + w.mainModule.segSels.map((s: number, i: number) => (i + 1) + '=' + s.toString(16)).join(' ')); }
+    if (opt('profFrom')) profOn = virtTime >= +opt('profFrom') && virtTime < +opt('profTo', '1e12');
+    const sl0 = performance.now(), si0 = cpu.icount;
     if (!w.runSlice(10000)) break;
+    { const d = performance.now() - sl0; if (d > longest.ms) { longest.ms = d; longest.instr = cpu.icount - si0; } }
     rt.tick(virtTime);
     virtTime += 0.5; // ~20M instr/s virtual speed
     if (opt('fitAt') && virtTime >= parseInt(opt('fitAt')) && !(globalThis as any).fitted) {

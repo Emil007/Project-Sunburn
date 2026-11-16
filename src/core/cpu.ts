@@ -334,7 +334,46 @@ export class CPU {
   get bitsV() { return this.opsz32 ? 32 : 16; }
   get curInstIp() { return this.instIp; }
 
+  /** 16-bit add/sub/cmp with the same flags as alu() */
+  private addsub16(sub: boolean, a: number, b: number): number {
+    const full = sub ? a - b : a + b; const r = full & 0xffff;
+    let f = this.flags & ~(CF | OF | AF | SF | ZF | PF);
+    if (sub ? full < 0 : full > 0xffff) f |= CF;
+    if ((sub ? (a ^ b) & (a ^ r) : (a ^ r) & (b ^ r)) & 0x8000) f |= OF;
+    if ((a ^ b ^ r) & 0x10) f |= AF;
+    if (r === 0) f |= ZF; if (r & 0x8000) f |= SF; f |= parity[r & 0xff];
+    this.flags = f; return r;
+  }
   private exec(op: number) {
+    // fast paths for the most frequent 16-bit instructions (measured on the game's map generation)
+    if (!this.opsz32) {
+      switch (op) {
+        case 0x8b: { this.modrm(); this.setReg16(this.regf, this.mod === 3 ? this.r[this.rm] : this.mem.r16(this.ea())); return; }
+        case 0x89: { this.modrm(); const v = this.r[this.regf]; if (this.mod === 3) this.setReg16(this.rm, v); else this.mem.w16(this.ea(), v); return; }
+        case 0x03: case 0x2b: case 0x3b: {
+          this.modrm(); const b = this.mod === 3 ? this.r[this.rm] & 0xffff : this.mem.r16(this.ea());
+          const r = this.addsub16(op !== 0x03, this.r[this.regf] & 0xffff, b); if (op !== 0x3b) this.setReg16(this.regf, r); return;
+        }
+        case 0x8a: { this.modrm(); this.setReg8(this.regf, this.mod === 3 ? this.reg8(this.rm) : this.u8[this.ea()]); return; }
+        case 0x88: { this.modrm(); const v = this.reg8(this.regf); if (this.mod === 3) this.setReg8(this.rm, v); else this.u8[this.ea()] = v; return; }
+        case 0x70: case 0x71: case 0x72: case 0x73: case 0x74: case 0x75: case 0x76: case 0x77:
+        case 0x78: case 0x79: case 0x7a: case 0x7b: case 0x7c: case 0x7d: case 0x7e: case 0x7f: {
+          const d = this.fs8(); if (this.cond(op & 0xf)) this.ip = (this.ip + d) & 0xffff; return;
+        }
+        case 0x83: {
+          this.modrm(); const imm = this.fs8() & 0xffff; const g = this.regf;
+          const a = this.mod === 3 ? this.r[this.rm] & 0xffff : this.mem.r16(this.ea());
+          const r = g === 0 ? this.addsub16(false, a, imm) : g === 5 || g === 7 ? this.addsub16(true, a, imm) : this.alu(g, a, imm, 16);
+          if (g !== 7) { if (this.mod === 3) this.setReg16(this.rm, r); else this.mem.w16(this.ea(), r); }
+          return;
+        }
+        case 0x50: case 0x51: case 0x52: case 0x53: case 0x55: case 0x56: case 0x57: this.push16(this.r[op & 7]); return;
+        case 0xc4: case 0xc5: {
+          this.modrm(); const a = this.ea(); const off = this.mem.r16(a);
+          this.loadSeg(op === 0xc4 ? ES : DS, this.mem.r16(a + 2)); this.setReg16(this.regf, off); return;
+        }
+      }
+    }
     const bv = this.opsz32 ? 32 : 16;
     if (op < 0x40 && (op & 7) < 6) {
       // ALU group
@@ -413,7 +452,7 @@ export class CPU {
       case 0x68: this.pushv(this.fv()); return;
       case 0x69: case 0x6b: {
         this.modrm(); const a = this.rmv(); const b = op === 0x69 ? this.fv() : this.fs8();
-        this.imulTo(a, b, bv, (v) => this.setRegv(v)); return;
+        this.imulReg(a, b, bv); return;
       }
       case 0x6a: { const v = this.fs8(); if (this.opsz32) this.push32(v); else this.push16(v & 0xffff); return; }
       case 0x80: case 0x82: { this.modrm(); const imm = this.f8(); const r = this.alu(this.regf, this.rm8(), imm, 8); if (this.regf !== 7) this.setRm8(r); return; }
@@ -541,10 +580,20 @@ export class CPU {
     throw new CPUFault(n, `unhandled int ${n.toString(16)} at ${this.s[CS].toString(16)}:${this.instIp.toString(16)} ax=${this.ax.toString(16)}`);
   }
 
-  private imulTo(a: number, b: number, bits: number, set: (v: number) => void) {
-    let sa: number, sb: number;
-    if (bits === 16) { sa = (a << 16) >> 16; sb = (b << 16) >> 16; const r = sa * sb; set(r & 0xffff); const ov = r !== ((r << 16) >> 16); this.flags = ov ? this.flags | CF | OF : this.flags & ~(CF | OF); }
-    else { sa = a | 0; sb = b | 0; const r = BigInt(sa) * BigInt(sb); const lo = Number(BigInt.asIntN(32, r)); set(lo >>> 0); const ov = BigInt(lo) !== r; this.flags = ov ? this.flags | CF | OF : this.flags & ~(CF | OF); }
+  private mulLo = 0;
+  /** unsigned 32x32 multiply: returns the high 32 bits, low 32 bits in mulLo (exact, no BigInt) */
+  private mul32(a: number, b: number): number {
+    const al = a & 0xffff, ah = a >>> 16, bl = b & 0xffff, bh = b >>> 16;
+    const t = al * bl; const m = ah * bl + (t >>> 16); const m2 = al * bh + (m & 0xffff);
+    this.mulLo = (((m2 & 0xffff) << 16) | (t & 0xffff)) | 0;
+    return (ah * bh + Math.floor(m / 65536) + Math.floor(m2 / 65536)) | 0;
+  }
+  /** IMUL reg, a * b (two/three-operand forms) */
+  private imulReg(a: number, b: number, bits: number) {
+    let ov: boolean;
+    if (bits === 16) { const r = ((a << 16) >> 16) * ((b << 16) >> 16); this.setReg16(this.regf, r); ov = r !== ((r << 16) >> 16); }
+    else { const sa = a | 0, sb = b | 0; const lo = Math.imul(sa, sb); this.r[this.regf] = lo; ov = sa * sb !== lo; }
+    this.flags = ov ? this.flags | CF | OF : this.flags & ~(CF | OF);
   }
 
   private grp3(op: number) {
@@ -558,13 +607,18 @@ export class CPU {
       case 4: { // mul
         if (bits === 8) { const r = this.al * v; this.ax = r; this.flags = (r & 0xff00) ? this.flags | CF | OF : this.flags & ~(CF | OF); }
         else if (bits === 16) { const r = this.ax * v; this.ax = r & 0xffff; this.dx = r >>> 16; this.flags = (r >>> 16) ? this.flags | CF | OF : this.flags & ~(CF | OF); }
-        else { const r = BigInt(this.r[0] >>> 0) * BigInt(v >>> 0); this.r[0] = Number(r & 0xffffffffn); this.r[2] = Number(r >> 32n); this.flags = (r >> 32n) ? this.flags | CF | OF : this.flags & ~(CF | OF); }
+        else { const hi = this.mul32(this.r[0] >>> 0, v >>> 0); this.r[0] = this.mulLo; this.r[2] = hi; this.flags = hi ? this.flags | CF | OF : this.flags & ~(CF | OF); }
         return;
       }
       case 5: { // imul
         if (bits === 8) { const r = ((this.al << 24) >> 24) * ((v << 24) >> 24); this.ax = r & 0xffff; const ov = r !== ((r << 24) >> 24); this.flags = ov ? this.flags | CF | OF : this.flags & ~(CF | OF); }
         else if (bits === 16) { const r = ((this.ax << 16) >> 16) * ((v << 16) >> 16); this.ax = r & 0xffff; this.dx = (r >> 16) & 0xffff; const ov = r !== ((r << 16) >> 16); this.flags = ov ? this.flags | CF | OF : this.flags & ~(CF | OF); }
-        else { const r = BigInt(this.r[0] | 0) * BigInt(v | 0); this.r[0] = Number(BigInt.asIntN(32, r)); this.r[2] = Number(BigInt.asIntN(32, r >> 32n)); const ov = BigInt(this.r[0]) !== r; this.flags = ov ? this.flags | CF | OF : this.flags & ~(CF | OF); }
+        else {
+          const a = this.r[0] | 0, b = v | 0; const neg = (a < 0) !== (b < 0);
+          let hi = this.mul32(Math.abs(a), Math.abs(b)) >>> 0; let lo = this.mulLo >>> 0;
+          if (neg) { lo = (~lo + 1) >>> 0; hi = (~hi + (lo === 0 ? 1 : 0)) >>> 0; }
+          this.r[0] = lo | 0; this.r[2] = hi | 0; const ov = (hi | 0) !== ((lo | 0) >> 31); this.flags = ov ? this.flags | CF | OF : this.flags & ~(CF | OF);
+        }
         return;
       }
       case 6: { // div
@@ -692,7 +746,7 @@ export class CPU {
         }
         this.setRmv(r); this.setSZP(r, bv); this.flags = cf ? this.flags | CF : this.flags & ~CF; return;
       }
-      case 0xaf: { this.modrm(); this.imulTo(this.regv(), this.rmv(), bv, (v) => this.setRegv(v)); return; }
+      case 0xaf: { this.modrm(); this.imulReg(this.regv(), this.rmv(), bv); return; }
       case 0xb2: case 0xb4: case 0xb5: {
         this.modrm(); const a = this.ea();
         const off = this.opsz32 ? this.mem.r32(a) : this.mem.r16(a); const sel = this.mem.r16(a + (this.opsz32 ? 4 : 2));

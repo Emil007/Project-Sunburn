@@ -155,7 +155,7 @@ api.postKey(vk)  // send a key press to the game
 api.call(sel, off, args)  // call a far function of the game, e.g. api.call(seg.sel, 0x2bae, [[ptr32, 4]])
                           // args: [value, 2 or 4] pairs in Pascal order (pushed first to last); returns DX:AX as one number
 api.disk     // { list(dir), read(path), remove(path) } the game's C: drive (saves); changes are persisted
-api.setSpeed(f)  // game speed factor 0.25 … 10 (scales the game's short timers, < 500 ms)
+api.setSpeed(f, ms)  // speed factor 0.25 … 10 for the timers with interval ms (0: all timers under 500 ms)
 api.onDraw((px, w, h) => { … })  // draw on top of each presented frame (Uint32Array RGBA, w×h)
 api.onInput((e) => consumed)     // see input before the game: { type, x, y, button, vk }; return true to swallow it
 api.redraw()     // present a new frame now (e.g. after your onDraw output changed)

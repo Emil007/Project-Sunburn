@@ -40,7 +40,12 @@ export class User {
   timers: Timer[] = [];
   // game speed: short timers (the game's tick) fire this many times faster; UI delays stay as they are
   timerScale = 1;
-  private tInt(ms: number) { return ms < 500 && this.timerScale !== 1 ? Math.max(1, ms / this.timerScale) : ms; }
+  /** only timers with exactly this interval are scaled (0 = all timers under 500 ms) */
+  timerScaleOnly = 0;
+  private tInt(ms: number) {
+    if (this.timerScale === 1 || (this.timerScaleOnly ? ms !== this.timerScaleOnly : ms >= 500)) return ms;
+    return Math.max(1, ms / this.timerScale);
+  }
   // mods can take mouse/keyboard events before the game sees them (return true = consumed)
   inputFilters: ((e: { type: string; x?: number; y?: number; button?: number }) => boolean)[] = [];
   private nextH = 0x0400;
