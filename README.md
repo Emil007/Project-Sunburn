@@ -108,6 +108,11 @@ the desktop app, between devices, and to or from the original game's `MAPS` fold
   picture, and game windows that would end up outside are moved back into view. "Fit to window"
   under Settings → Scaling restores free scaling.
 * The game's own options (music track, volumes, game speed …) work as in the original.
+* **How the speeds fit together:** the game's own *Game Speed* slider (Options) sets how long a day
+  lasts, from about a fifth of the normal speed to four times it. The speed buttons (▶ / ▶▶ / ▶▶▶)
+  multiply that by 1, 5 or 10. Fast-forward and *Freeze time* in the cheat menu take over only while they
+  run; afterwards your speed button choice is back. Fast-forward counts days, so a week is a week
+  whatever the slider says.
 * Game windows can be dragged by their title bar, as in the original.
 
 ### Cheats
@@ -158,10 +163,11 @@ next start.
 | Large island view *(recommended)* | See much more of the island: the map window gets bigger than 640×480 (automatically fitted to your screen, or a fixed size up to 1920×1064), and the screen around it leaves room for the finance, map and other windows, so they open next to the island instead of covering it. Every window can be moved by its title bar. Saves stay compatible with the original. |
 | Modern menus *(recommended)* | Drop shadows, fade‑in, optional dimming behind game windows. |
 | Gamepad controls *(recommended)* | Gamepad / Steam Deck controls, see above. |
-| Quality of life *(recommended)* | Scroll the island with the mouse wheel or by dragging with the right mouse button, optional edge scrolling. |
+| Quality of life *(recommended)* | Scroll the island with the mouse wheel or by dragging with the right mouse button, optional edge scrolling. Scrolling always moves the island, also with the finance window in front or in building mode (the arrow keys too). On the overview map, drag with the right mouse button, and a right click glides there instead of jumping. |
 | Autosave *(recommended)* | Saves on the 1st of every in‑game month as `AUTOyymm` and keeps the newest 5 (adjustable). Load them like any other save. |
-| Game speed *(recommended)* | Three buttons in front of the date, drawn in the game's own style: ▶ normal, ▶▶ 2×, ▶▶▶ 5×, with tooltips. Keys F5 / F6 / F7, **Pause** stops the clock; gamepad RB steps through the speeds. |
-| Rivals overview *(recommended)* | **F8**: every player with colour and money, and a chart of how the money developed during this session. |
+| Game speed *(recommended)* | Three buttons in front of the date, drawn in the game's own style: ▶ normal, ▶▶ 5×, ▶▶▶ 10×, with tooltips. Keys F5 / F6 / F7, **Pause** stops the clock; gamepad RB steps through the speeds. |
+| Zoom | Zoom into the island to see the art up close: **+** / **−** step through 1×, 1.5×, 2× and 3×, **0** goes back. Only the island picture is enlarged; windows and the cursor stay as they are and clicks land where you point. To see *more* of the island, use a bigger Large island view instead (the game can draw at most about 2032 × 1064 pixels of island at once). |
+| Rivals overview *(recommended)* | **F8**: every player with colour and money, and a chart of how the money developed during this session. Like the F9 cheat menu it is a window in the game's style that you can move by its title bar. |
 | Skip intros | Skip the intro film and/or the flight to the island after Start. |
 | Custom SoundFont | Play the music with your own .sf2/.sf3. |
 | Currency | Replace DM / £ in all game texts, e.g. with € (also $, ¥, CHF, öS, ₿, custom). Missing symbols are drawn into the game's own bitmap font. |

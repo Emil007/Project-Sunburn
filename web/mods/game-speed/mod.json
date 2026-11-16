@@ -5,8 +5,8 @@
  "version": "1.0",
  "author": "Project Sunburn",
  "category": "Gameplay",
- "description": "Adds three buttons in front of the date: ▶ normal speed, ▶▶ twice as fast, ▶▶▶ five times as fast. Days, guests and building work all run faster, like on a faster PC. Keys: F5 / F6 / F7 for the three speeds, Pause to stop the clock and go on; gamepad: RB steps through the speeds.",
- "description_de": "Fügt vor dem Datum drei Tasten hinzu: ▶ normales Tempo, ▶▶ doppelt so schnell, ▶▶▶ fünfmal so schnell. Tage, Gäste und Bauarbeiten laufen schneller, wie auf einem schnelleren PC. Tasten: F5 / F6 / F7 für die drei Tempi, Pause hält die Uhr an und lässt sie weiterlaufen; Gamepad: RB schaltet durch die Tempi.",
+ "description": "Adds three buttons in front of the date: ▶ normal speed, ▶▶ five times as fast, ▶▶▶ ten times as fast. Days, guests and building work all run faster, like on a faster PC. They work on top of the game's own Game Speed slider (Options), which sets how long a day lasts; the cheat menu's fast-forward and Freeze time go back to your choice when they end. Keys: F5 / F6 / F7 for the three speeds, Pause to stop the clock and go on; gamepad: RB steps through the speeds.",
+ "description_de": "Fügt vor dem Datum drei Tasten hinzu: ▶ normales Tempo, ▶▶ fünfmal so schnell, ▶▶▶ zehnmal so schnell. Tage, Gäste und Bauarbeiten laufen schneller, wie auf einem schnelleren PC. Sie wirken zusätzlich zum Regler „Spielgeschwindigkeit“ in den Optionen des Spiels, der festlegt, wie lang ein Tag dauert; Vorspulen und „Zeit anhalten“ im Cheat-Menü kehren danach zu deiner Wahl zurück. Tasten: F5 / F6 / F7 für die drei Tempi, Pause hält die Uhr an und lässt sie weiterlaufen; Gamepad: RB schaltet durch die Tempi.",
  "script": "script.js",
  "recommended": true,
  "ui": "ui.js"

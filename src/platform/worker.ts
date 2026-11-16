@@ -67,6 +67,17 @@ self.onmessage = (e: MessageEvent) => {
     } catch { post({ t: 'title', rgba: null } as any); }
     return;
   }
+  if (msg.t === 'music') {
+    // the game's music (MUSIK\*.MID), for the music player in the launcher
+    try {
+      const d = openDisc(msg.files); const inst = buildInstall(d, { videoHi: true, soundHi: true });
+      const out = new Map<string, Uint8Array>();
+      for (const [p] of d.files) if (/(^|\\)MUSIK\\[^\\]+\.MID$/i.test(p)) out.set(p.split('\\').pop()!.toUpperCase(), d.readFile(p)!);
+      for (const p of inst.C.files.keys()) if (/\\MUSIK\\[^\\]+\.MID$/i.test(p)) { const n = p.split('\\').pop()!.toUpperCase(); if (!out.has(n)) out.set(n, inst.C.read(p)!); }
+      post({ t: 'music', tracks: [...out].map(([name, data]) => ({ name, data })) } as any);
+    } catch (err: any) { post({ t: 'music', tracks: [], error: String(err?.message || err) } as any); }
+    return;
+  }
   if (msg.t === 'start') {
     try { run(msg as StartConfig); }
     catch (err: any) { post({ t: 'crash', msg: String(err?.message || err), detail: String(err?.stack || '') }); }
@@ -97,7 +108,9 @@ function run(cfg: StartConfig) {
   let midiEnd = 0, midiPausedLeft = 0;
   let cdEnd = 0; const sentTracks = new Set<number>();
   let lastCursorId = -1;
-  const now = () => performance.now();
+  // the game's clock stands still while the page pauses the game (window in the background)
+  let pausedTotal = 0;
+  const now = () => performance.now() - pausedTotal;
   const platform: Platform = {
     now,
     wait(ms: number) {
@@ -220,6 +233,11 @@ function run(cfg: StartConfig) {
   let viewSeq = 0;
   try {
     while (!w.exited) {
+      if (Atomics.load(ctrl, CTRL.PAUSE)) {
+        const p0 = performance.now();
+        while (Atomics.load(ctrl, CTRL.PAUSE) && !Atomics.load(ctrl, CTRL.QUIT)) { Atomics.add(ctrl, CTRL.HEART, 1); Atomics.wait(ctrl, CTRL.PAUSE, 1, 250); }
+        pausedTotal += performance.now() - p0;
+      }
       const s0 = performance.now();
       Atomics.add(ctrl, CTRL.HEART, 1); ctrl[CTRL.GAMECS] = cpu.cs; ctrl[CTRL.GAMEIP] = cpu.ip;
       const ok = w.runSlice(20000);

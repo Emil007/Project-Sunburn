@@ -1,6 +1,6 @@
 {
   "name": "project-sunburn",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Project Sunburn: Holiday Island (1996) for modern systems. Win16 runtime, launcher and mods. Bring your own CD.",
   "scripts": {
     "build": "node build.mjs",

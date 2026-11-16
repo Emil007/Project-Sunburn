@@ -2,11 +2,11 @@
 // plank), in the style of the game's own buttons, with a tooltip in the game's font.
 // Speed = the game's own 100 ms tick timer fires faster (the same thing the German release's hidden
 // Ctrl+Shift+Alt+N/M keys do by changing that timer's interval). Films and other timers keep their speed.
-const SPEEDS = [1, 2, 5];
+const SPEEDS = [1, 5, 10];
 const TICK = 100; // interval of the game's tick timer (ms)
 const TIPS = api.lang === 'de'
-  ? ['Normales Tempo', 'Schnell (2x)', 'Sehr schnell (5x)']
-  : ['Normal speed', 'Fast (2x)', 'Very fast (5x)'];
+  ? ['Normales Tempo', 'Schnell (5x)', 'Sehr schnell (10x)']
+  : ['Normal speed', 'Fast (5x)', 'Very fast (10x)'];
 const BX = 452, BY = 19, BW = 14, BH = 12, GAP = 1;   // window-relative, original 640x480 layout
 let speed = 0, hover = -1, hoverSince = 0, pressed = -1;
 

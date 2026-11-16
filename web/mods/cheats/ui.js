@@ -28,34 +28,20 @@ const T = de ? {
   rivals: 'Rivals', bankrupt: 'Bankrupt', broke: 'bankrupted', rivalsHelp: 'The rival goes bankrupt by the game\'s own rules and their property is auctioned.',
 };
 
-const root = api.overlay();
-const panel = document.createElement('div');
-root.appendChild(panel);
-panel.hidden = true;
-Object.assign(panel.style, {
-  position: 'absolute', right: '16px', top: '16px', width: '330px', maxHeight: 'calc(100% - 32px)', overflowY: 'auto',
-  pointerEvents: 'auto', background: 'linear-gradient(#c89a5e, #a8783e)', color: '#2a1606', border: '2px solid #3c2410',
-  boxShadow: 'inset 1px 1px 0 #ffecbe, inset -1px -1px 0 #5a3618, 0 6px 24px rgba(0,0,0,.5)', borderRadius: '4px',
-  font: '13px/1.35 system-ui, sans-serif', padding: '0 0 10px', zIndex: 50, userSelect: 'none',
-});
+const win = api.window({ title: T.title, width: 330, side: 'right' });
+const panel = win.body;
 const css = document.createElement('style');
 css.textContent = `
-.hi-cheat h2 { margin: 0 0 6px; padding: 6px 10px; font-size: 15px; color: #ffe66e; background: linear-gradient(#6a3e8e, #4a2470); border-bottom: 2px solid #3c2410; letter-spacing: .08em; text-shadow: 1px 1px 0 #000; }
-.hi-cheat h3 { margin: 10px 10px 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: #3c2410; }
-.hi-cheat .row { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 10px; align-items: center; }
-.hi-cheat button { flex: 1; min-width: 80px; padding: 5px 8px; font: inherit; font-weight: 600; color: #2a1606; cursor: pointer;
-  background: linear-gradient(#f0d29a, #d2a868); border: 1px solid #3c2410; box-shadow: inset 1px 1px 0 #ffecbe, inset -1px -1px 0 #8a5a28; border-radius: 3px; }
-.hi-cheat button:hover:not(:disabled) { background: linear-gradient(#fbe2b0, #e0b878); }
-.hi-cheat button:active:not(:disabled) { box-shadow: inset -1px -1px 0 #ffecbe, inset 1px 1px 0 #8a5a28; }
-.hi-cheat button:disabled { opacity: .5; cursor: default; }
-.hi-cheat label { display: flex; gap: 6px; align-items: center; margin: 4px 10px 0; font-weight: 600; cursor: pointer; }
-.hi-cheat .help { margin: 2px 10px 0; font-size: 12px; color: #4a2c10; }
-.hi-cheat .rival { display: flex; align-items: center; gap: 8px; margin: 3px 10px 0; }
-.hi-cheat .rival span { flex: 1; font-weight: 600; }
-.hi-cheat .rival button { flex: 0 0 auto; min-width: 0; }
-.hi-cheat .close { margin: 10px 10px 0; width: calc(100% - 20px); }`;
-root.appendChild(css);
-panel.className = 'hi-cheat';
+.hi-cheat h3 { margin: 8px 8px 4px; padding: 2px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.hi-cheat .row { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 8px; align-items: center; }
+.hi-cheat .row button { flex: 1; min-width: 80px; }
+.hi-cheat label { display: flex; gap: 6px; align-items: center; margin: 4px 8px 0; cursor: pointer; }
+.hi-cheat .help { margin: 2px 8px 0; font-weight: normal; font-size: 11px; color: #2e2010; }
+.hi-cheat .rival { display: flex; align-items: center; gap: 8px; margin: 3px 8px 0; }
+.hi-cheat .rival span { flex: 1; }
+.hi-cheat .close { margin: 10px 8px 0; width: calc(100% - 16px); }`;
+css.id = 'hi-cheat-css'; document.getElementById('hi-cheat-css')?.remove(); document.head.appendChild(css);
+panel.classList.add('hi-cheat');
 
 let state = { inGame: false };
 const COLOURS = [null, ['#ffff00', 'yellow', 'gelb'], ['#ffa700', 'orange', 'orange'], ['#ff007f', 'red', 'rot'], ['#b700ff', 'purple', 'lila'],
@@ -69,34 +55,33 @@ const help = (text) => el('div', { className: 'help', textContent: text });
 
 function render() {
   panel.textContent = '';
-  panel.append(el('h2', { textContent: T.title }));
   if (!state.inGame) {
     panel.append(help(T.notInGame), el('div', { className: 'row' }, btn(T.close, close)));
     return;
   }
   const s = state;
   panel.append(
-    el('h3', { textContent: T.money }),
+    el('h3', { className: 'inset', textContent: T.money }),
     el('div', { className: 'row' }, btn(T.million, () => api.command(CMD.MONEY, 1000000)), btn(T.billion, () => api.command(CMD.MONEY, 1000000000))),
     toggle(T.freezeMoney, s.freezeMoney, (v) => api.command(CMD.FREEZE_MONEY, v ? 1 : 0)), help(T.freezeMoneyHelp),
     toggle(T.keepWin, s.keepWin, (v) => { save('keepWin', v); api.command(CMD.KEEP_WIN, v ? 1 : 0); }), help(T.keepWinHelp),
     help(T.menuNote),
 
-    el('h3', { textContent: T.buildings }),
+    el('h3', { className: 'inset', textContent: T.buildings }),
     el('div', { className: 'row' }, btn(T.nextBuilding, () => api.command(CMD.NEXT_BUILDING), !s.buildingsLeft), btn(T.allBuildings, () => api.command(CMD.ALL_BUILDINGS), !s.buildingsLeft)),
     help(T.left(s.buildingsLeft)),
 
-    el('h3', { textContent: T.attractions }),
+    el('h3', { className: 'inset', textContent: T.attractions }),
     el('div', { className: 'row' }, btn(T.nextAuction, () => api.command(CMD.NEXT_AUCTION), !s.auctionsLeft), btn(T.allAttractions, () => api.command(CMD.ALL_ATTRACTIONS))),
     help(`${T.auctionsLeft(s.auctionsLeft)}. ${T.auctionHelp}`),
 
-    el('h3', { textContent: T.time }),
+    el('h3', { className: 'inset', textContent: T.time }),
     help(T.ffLabel),
     el('div', { className: 'row' }, btn(T.week, () => api.command(CMD.SKIP_DAYS, 7), !!s.ff), btn(T.month, () => api.command(CMD.SKIP_DAYS, 30), !!s.ff), btn(T.year, () => api.command(CMD.SKIP_DAYS, 365), !!s.ff)),
     ...(s.ff ? [el('div', { className: 'row' }, el('span', { textContent: T.ff(s.ff), style: 'flex:2;font-weight:600' }), btn(T.stop, () => api.command(CMD.STOP_FF))), ...(s.ffPaused ? [help(T.ffPaused)] : [])] : []),
     toggle(T.freezeTime, s.freezeTime, (v) => api.command(CMD.FREEZE_TIME, v ? 1 : 0)), help(T.freezeTimeHelp),
 
-    el('h3', { textContent: T.rivals }),
+    el('h3', { className: 'inset', textContent: T.rivals }),
     ...s.rivals.map((r) => el('div', { className: 'rival' }, el('span', {}, swatch(r.colour), r.name + (COLOURS[r.colour] ? ` (${COLOURS[r.colour][de ? 2 : 1]})` : '') + (r.broke ? ` – ${T.broke}` : '')), btn(T.bankrupt, () => api.command(CMD.BANKRUPT, r.p), r.broke))),
     help(T.rivalsHelp),
 
@@ -110,17 +95,17 @@ const KEY = 'hi.cheats';
 const saved = (() => { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; } })();
 function save(k, v) { saved[k] = v; try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch { /* */ } }
 
-function open() { panel.hidden = false; api.command(CMD.STATE); render(); }
-function close() { panel.hidden = true; }
+function open() { win.show(); api.command(CMD.STATE); render(); }
+function close() { win.hide(); }
 api.onKey((e) => {
-  if (e.code === 'Escape' && !panel.hidden) { if (e.type === 'keydown') close(); return true; }
+  if (e.code === 'Escape' && win.shown) { if (e.type === 'keydown') close(); return true; }
   if (e.code !== 'F9') return false;
-  if (e.type === 'keydown' && !e.repeat) { if (panel.hidden) open(); else close(); }
+  if (e.type === 'keydown' && !e.repeat) { if (!win.shown) open(); else close(); }
   return true;
 });
 api.onMessage((d) => {
   const was = state.inGame; state = d;
   if (d.inGame && !was && saved.keepWin) api.command(CMD.KEEP_WIN, 1);
-  if (!panel.hidden) render();
+  if (win.shown) render();
 });
 api.every(2000, () => { if (!state.inGame) api.command(CMD.STATE); });

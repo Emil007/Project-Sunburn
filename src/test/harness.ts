@@ -39,17 +39,20 @@ fs.mkdirSync(outDir, { recursive: true });
 let rtRef: any = null;
 const script: { at: number; ev: InputEvent }[] = opt('script') ? JSON.parse(fs.readFileSync(opt('script'), 'utf8')) : [];
 
-let virtTime = 0; let waitTotal = 0; let lastReport = 0; let lastWait = 0; let lastInstr = 0; // virtual clock in ms, advanced by wait() and per-instruction
+let sliceI0 = 0; let virtTime = 0; let waitTotal = 0; let lastReport = 0; let lastWait = 0; let lastInstr = 0; // virtual clock in ms, advanced by wait() and per-instruction
 const events: InputEvent[] = [];
 let lastFrame: Uint8Array | null = null; let lastW = 640, lastH = 480;
-const shotEvery = parseInt(opt('shotEvery', '2000')); let nextShot = shotEvery;
+const shotEvery = parseInt(opt('shotEvery', '2000')); let nextShot = Math.max(shotEvery, parseInt(opt('shotFrom', '0')));
+const shotCrop = opt('shotCrop') ? opt('shotCrop').split(',').map(Number) : null;
 const logLines: string[] = [];
 const platform: Platform = {
-  now: () => virtTime,
+  // inside a slice the clock runs on with the instructions, so a loop that waits for the clock within
+  // one call into the game (an animation drawn in a message handler) still ends
+  now: () => virtTime + Math.max(0, ((globalThis as any).__cpuI?.() ?? 0) - sliceI0) / 20000,
   wait: (ms) => { virtTime += Math.max(ms, 1); waitTotal += Math.max(ms, 1); if (virtTime > maxMs) { (globalThis as any).W?.exit(0); } },
   // script events of type "modcmd" ({ type: 'modcmd', mod: 'cheats', cmd: 1, arg: 0 }) go to the mod's script like the F9 menu's
   pollEvents: () => { while (script.length && script[0].at <= virtTime) { const ev: any = script.shift()!.ev; if (ev.type === 'modcmd') { const i = (rtRef?.mods || []).findIndex((m: any) => m.manifest.id === ev.mod); rtRef?.pendingCommands.push([i, ev.cmd, ev.arg | 0]); rtRef?.deliverCommands(); } else events.push(ev); } return events.splice(0); },
-  present: (rgba, w, h) => { lastFrame = rgba; lastW = w; lastH = h; if (virtTime >= nextShot) { fs.writeFileSync(path.join(outDir, `t${String(Math.floor(virtTime)).padStart(7, '0')}.png`), png(rgba, w, h)); nextShot = virtTime + shotEvery; } },
+  present: (rgba, w, h) => { lastFrame = rgba; lastW = w; lastH = h; const vt = platform.now(); if (vt >= nextShot) { if (shotCrop) { const [cx, cy, cw, ch] = shotCrop; const c = new Uint8Array(cw * ch * 4); for (let y = 0; y < ch; y++) c.set(rgba.subarray(((cy + y) * w + cx) * 4, ((cy + y) * w + cx + cw) * 4), y * cw * 4); fs.writeFileSync(path.join(outDir, `t${String(Math.floor(vt)).padStart(7, '0')}.png`), png(c, cw, ch)); } else fs.writeFileSync(path.join(outDir, `t${String(Math.floor(vt)).padStart(7, '0')}.png`), png(rgba, w, h)); nextShot = vt + shotEvery; } },
   setCursor: () => {},
   messageBox: (t, c, ty) => { console.log(`MESSAGEBOX [${c}] ${t} type=${ty}`); const k = ty & 0xf; return k === 0 ? 1 : k === 4 ? 7 : k === 2 ? 3 : 2; },
   log: (s) => { logLines.push(s); if (!opt('quiet')) console.log(s); },
@@ -141,10 +144,11 @@ try {
     if (opt('fixAt') && virtTime >= parseInt(opt('fixAt')) && (globalThis as any).corrupted === 1) { (globalThis as any).corrupted = 2; }
     if (opt('apiFrom') && virtTime >= +opt('apiFrom') && !w.m.apiTrace) { w.m.apiTrace = true; (globalThis as any).__bltDbg = true; console.log('API TRACE ON segs ' + w.mainModule.segSels.map((s: number, i: number) => (i + 1) + '=' + s.toString(16)).join(' ')); }
     if (opt('profFrom')) profOn = virtTime >= +opt('profFrom') && virtTime < +opt('profTo', '1e12');
-    const sl0 = performance.now(), si0 = cpu.icount;
+    const sl0 = performance.now(), si0 = cpu.icount; sliceI0 = si0; (globalThis as any).__cpuI = () => cpu.icount;
     if (!w.runSlice(10000)) break;
     { const d = performance.now() - sl0; if (d > longest.ms) { longest.ms = d; longest.instr = cpu.icount - si0; } }
     rt.tick(virtTime);
+    if (opt('traceFrom') && virtTime >= +opt('traceFrom')) console.log(`slice t=${virtTime} took ${(performance.now() - sl0).toFixed(0)}ms cs=${cpu.cs.toString(16)} ip=${cpu.ip.toString(16)} recent ${w.m.callHistory.slice(-4).join(' ')}`);
     virtTime += 0.5; // ~20M instr/s virtual speed
     if (opt('fitAt') && virtTime >= parseInt(opt('fitAt')) && !(globalThis as any).fitted) {
       for (const t of w.user.tops) if (t.cls.name === 'THauptschirm' && (t.style & 0x10000000)) { (globalThis as any).fitted = 1; w.user.setPos(t, 0, 0, 0, w.screenW, w.screenH, 0x14); const a = w.m.mem.lin(w.mainModule.autoDS, 0x12bc); if (opt('viewW')) { w.m.mem.w16(a, +opt('viewW')); w.m.mem.w16(a + 2, +opt('viewH')); } console.log('fitted main window'); }

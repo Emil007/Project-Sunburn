@@ -96,6 +96,9 @@
       <div class="field"><label data-i18n="musicSource">Music source</label>
         <select id="optMusicSrc"><option value="sf2" data-i18n="msSf2">MIDI · GeneralUser GS SoundFont</option><option value="none" data-i18n="msOff">Off</option></select></div>
       <h4 class="wide" data-i18n="secGame">Game</h4>
+      <div class="field wide"><label for="optBg" data-i18n="bgLabel">When the game is in the background</label>
+        <select id="optBg"><option value="run" data-i18n="bgRun">Keep playing</option><option value="pause" data-i18n="bgPause">Pause the game (and its sound)</option></select>
+        <small class="muted" data-i18n="bgHelp">In the background means another window or tab is in front.</small></div>
       <div class="field wide"><label class="chk"><input type="checkbox" id="optFixes"> <span data-i18n="fixes">Fix mistakes of the original release</span></label>
         <small class="muted" data-i18n="fixesHelp">For example the English CD's music track that ends in "MCI error 275". Turn off to play the release exactly as it was.</small></div>
       <div class="field wide" id="proxyField"><label for="optProxy" data-i18n="dlProxy">Download proxy (optional)</label>

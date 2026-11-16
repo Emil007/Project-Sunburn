@@ -1,0 +1,16 @@
+{
+ "id": "zoom",
+ "name": "Zoom",
+ "name_de": "Zoom",
+ "version": "1.0",
+ "author": "Project Sunburn",
+ "category": "Graphics",
+ "description": "Zoom into the island to see the art up close: + and − (also on the number pad) step through 1×, 1.5×, 2× and 3×, 0 goes back to 1×. Only the island view is enlarged; the windows, the toolbar and the cursor stay as they are, and clicks land where you point. To see more of the island at once, use \"Large island view\" with a bigger size.",
+ "description_de": "In die Insel hineinzoomen, um die Grafik aus der Nähe zu sehen: + und − (auch auf dem Ziffernblock) schalten durch 1×, 1,5×, 2× und 3×, 0 stellt wieder 1× ein. Nur die Inselansicht wird vergrößert; Fenster, Werkzeugleiste und Mauszeiger bleiben, wie sie sind, und Klicks landen dort, wo du hinzeigst. Um mehr von der Insel auf einmal zu sehen, nimm „Große Inselansicht“ mit einer größeren Größe.",
+ "script": "script.js",
+ "ui": "ui.js",
+ "settings": [
+  { "key": "start", "type": "select", "label": "Zoom at the start", "label_de": "Zoom beim Start", "default": "1",
+    "options": [ { "value": "1", "label": "1×" }, { "value": "1.5", "label": "1.5×", "label_de": "1,5×" }, { "value": "2", "label": "2×" }, { "value": "3", "label": "3×" } ] }
+ ]
+}

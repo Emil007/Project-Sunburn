@@ -41,6 +41,13 @@ export class ModRuntime {
   startHooks: (() => void)[] = [];
   drawHooks: ((px: Uint32Array, w: number, h: number) => void)[] = [];
   inputFilters: ((e: any) => boolean)[] = [];
+  speedBase = 1; speedOnly = 100; speedHolds = new Map<string, number>();
+  applySpeed() {
+    if (!this.w) return;
+    const holds = [...this.speedHolds.values()];
+    const f = holds.length ? (holds.includes(0) ? 0 : Math.max(...holds)) : this.speedBase;
+    this.w.user.setTimerScale(f, this.speedOnly);
+  }
   screen: { w: number; h: number } | null = null;
   host = { w: 1280, h: 800 };
   toUI: (data: any) => void = () => {};   // delivers to ui.js scripts (api.onMessage)   // size of the player's window/screen in CSS pixels (set by the platform)
@@ -86,7 +93,7 @@ export class ModRuntime {
       onStart: (fn: () => void) => { rt.startHooks.push(fn); },
       onTick: (fn: (now: number) => void) => { rt.tickHooks.push(fn); },
       onCommand: (fn: (cmd: number, arg: number) => void) => { (rt.commandHooks.get(id) || rt.commandHooks.set(id, []).get(id)!).push(fn); },
-      getSpeed: () => rt.w.user.timerScale,
+      getSpeed: () => rt.speedBase,
       // fast-forward helper: the game skips most of its drawing (RectVisible reports nothing visible)
       skipDrawing: (on: boolean) => { rt.w.gdi.skipDraw = !!on; },
       wrapApi: (name: string, fn: (args: number[], orig: (a: number[]) => any) => any) => { rt.apiWraps.push({ name, fn }); },
@@ -95,7 +102,14 @@ export class ModRuntime {
       get mem() { return rt.memApi(); },
       windows: () => rt.windows(),
       // game speed: the game's short timers (its tick) run this many times faster (1 = normal)
-      setSpeed: (f: number, onlyInterval = 0) => { rt.w.user.setTimerScale(f === 0 ? 0 : Math.max(0.25, Math.min(100, +f || 1)), Math.max(0, onlyInterval | 0)); },
+      // The player's choice (the speed buttons) is the base; a mod can hold the speed for a while
+      // (fast-forward, freeze time) with holdSpeed, and when it lets go the player's choice is back.
+      setSpeed: (f: number, onlyInterval = 0) => { rt.speedBase = f === 0 ? 0 : Math.max(0.25, Math.min(100, +f || 1)); rt.speedOnly = Math.max(0, onlyInterval | 0); rt.applySpeed(); },
+      // hold the game speed (0 = stopped, else a factor) until holdSpeed(null); a stop wins over a fast hold
+      holdSpeed: (f: number | null, onlyInterval = 100) => { if (f === null) rt.speedHolds.delete(id); else rt.speedHolds.set(id, f === 0 ? 0 : Math.max(0.25, Math.min(100, +f || 1))); if (f !== null) rt.speedOnly = Math.max(0, onlyInterval | 0) || rt.speedOnly; rt.applySpeed(); },
+      // the speed the game runs at now (base or a hold); speedHeld: whether a mod holds it
+      get speedNow() { return rt.w ? rt.w.user.timerScale : rt.speedBase; },
+      get speedHeld() { return rt.speedHolds.size > 0; },
       // draw on top of the composed frame: fn(pixels: Uint32Array ABGR, width, height)
       onDraw: (fn: (px: Uint32Array, w: number, h: number) => void) => { rt.drawHooks.push(fn); if (rt.w) rt.w.drawHooks.push(fn); },
       // see input before the game: fn({ type: 'mousemove'|'mousedown'|'mouseup'|'keydown'|'keyup', x, y, button, vk }) -> true to consume

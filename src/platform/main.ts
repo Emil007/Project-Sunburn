@@ -13,7 +13,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 type Lang = 'en' | 'de';
 
 // ---------------- settings ----------------
-const defaults = { scale: 'pixel', aspect: '4:3', video: 'hi', music: 70, sfx: 85, musicSrc: 'sf2', dlProxy: '', lang: '' as Lang | '', ui: (navigator.language || 'en').startsWith('de') ? 'de' : 'en' };
+const defaults = { bg: 'run', scale: 'pixel', aspect: '4:3', video: 'hi', music: 70, sfx: 85, musicSrc: 'sf2', dlProxy: '', lang: '' as Lang | '', ui: (navigator.language || 'en').startsWith('de') ? 'de' : 'en' };
 type Settings = typeof defaults;
 const settings: Settings = { ...defaults, ...(() => { try { return JSON.parse(localStorage.getItem('hi.settings') || '{}'); } catch { return {}; } })() };
 if (settings.scale !== 'fit' && settings.scale !== 'pixel') settings.scale = 'pixel'; // filters moved to mods
@@ -231,6 +231,66 @@ async function manageSaves(lang: Lang) {
   $('modalText').appendChild(box);
   await p;
 }
+// a SoundFont from the active mods (Custom SoundFont), else null for the built-in one
+function customSoundfont(mods: ActiveMod[]): Uint8Array | null {
+  let sf: Uint8Array | null = null;
+  for (const m of mods) { const d = (m.manifest.soundfont && fileData(m, m.manifest.soundfont)) || m.files.find((f) => f.path.startsWith('@setting/') && /\.sf[23]$/i.test(String(m.settings[f.path.slice(9)])))?.data; if (d) sf = d; }
+  return sf;
+}
+// ---- music player: the game's MIDI music with the SoundFont the game would use ----
+const TRACKS: [string, string][] = [['ANOTRIAN.MID', 'Anotrian'], ["DUB.MID", "Dub'o'What?"], ["FLOATIN'.MID", "Floatin'"], ['SAMBA.MID', 'Samba do…'],
+  ['UKANCHI.MID', 'Ukanchi'], ['CUBAN.MID', 'Cuban Memories'], ['HOLIDAY.MID', 'Holiday Island'], ['GEWONN.MID', ''], ['PLEITE.MID', ''], ['ENDELOOP.MID', '']];
+async function musicPlayer(lang: Lang) {
+  const disc = library.get(lang); if (!disc) return;
+  const box = document.createElement('div'); box.className = 'jukebox';
+  const status = document.createElement('div'); status.className = 'muted'; status.textContent = t('jbLoading'); box.appendChild(status);
+  const p = showModal(t('jbTitle'), '', 0); $('modalText').appendChild(box);
+  if (settings.musicSrc !== 'sf2') { status.textContent = t('jbOff'); await p; return; }
+  const tracks: { name: string; data: Uint8Array }[] = await new Promise((res) => {
+    const w = new Worker('worker.js'); w.onmessage = (e) => { if (e.data.t === 'music') { w.terminate(); res(e.data.tracks || []); } };
+    w.onerror = () => { w.terminate(); res([]); };
+    w.postMessage({ t: 'music', files: disc.files });
+  });
+  let mods: ActiveMod[] = []; try { mods = await buildActive(lang); } catch { /* */ }
+  const audio = new AudioEngine(); let closed = false;
+  void p.then(() => { closed = true; void audio.midi('stop'); setTimeout(() => void audio.ctx.close(), 200); });
+  await audio.ctx.resume();
+  await audio.initSynth((x) => { status.textContent = x; }, customSoundfont(mods));
+  if (closed) return;
+  if (!audio.seq) { status.textContent = t('jbFail'); return; }
+  const order = TRACKS.map(([f]) => f);
+  const list = [...tracks].sort((a, b) => (order.indexOf(a.name) + 1 || 99) - (order.indexOf(b.name) + 1 || 99));
+  const title = (n: string) => { const k = TRACKS.find(([f]) => f === n); const extra: Record<string, string> = { 'GEWONN.MID': t('jbWon'), 'PLEITE.MID': t('jbBroke'), 'ENDELOOP.MID': t('jbEnd') }; return (k && k[1]) || extra[n] || n.replace(/\.MID$/, ''); };
+  status.textContent = t('jbHelp').replace('{sf}', customSoundfont(mods) ? t('jbSfCustom') : 'GeneralUser GS');
+  const ul = document.createElement('div'); ul.className = 'jbList'; box.appendChild(ul);
+  const bar = document.createElement('div'); bar.className = 'jbBar';
+  const now = document.createElement('span'); now.className = 'jbNow';
+  const pos = document.createElement('input'); pos.type = 'range'; pos.min = '0'; pos.max = '1000'; pos.value = '0'; pos.disabled = true;
+  const stopB = document.createElement('button'); stopB.className = 'btn small'; stopB.textContent = '■';
+  const all = document.createElement('label'); all.className = 'chk'; const allC = document.createElement('input'); allC.type = 'checkbox'; allC.checked = true; all.append(allC, document.createTextNode(' ' + t('jbAll')));
+  bar.append(stopB, now, pos, all); box.appendChild(bar);
+  let cur = -1; const rows: HTMLElement[] = [];
+  const fmt = (x: number) => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, '0')}`;
+  const play = (i: number) => {
+    cur = i; rows.forEach((r, k) => r.classList.toggle('on', k === i));
+    audio.applyVolumes(); void audio.midi('play', list[i].data); pos.disabled = false;
+  };
+  list.forEach((tr, i) => {
+    const r = document.createElement('button'); r.className = 'jbRow'; r.innerHTML = `<b>▶</b><span></span>`; (r.lastChild as HTMLElement).textContent = title(tr.name);
+    r.onclick = () => play(i); rows.push(r); ul.appendChild(r);
+  });
+  stopB.onclick = () => { cur = -1; rows.forEach((r) => r.classList.remove('on')); void audio.midi('stop'); pos.disabled = true; pos.value = '0'; now.textContent = ''; };
+  pos.oninput = () => { const sq = audio.seq; if (sq && cur >= 0 && sq.duration) sq.currentTime = (+pos.value / 1000) * sq.duration; };
+  const tick = window.setInterval(() => {
+    if (closed) { clearInterval(tick); return; }
+    const sq = audio.seq; if (!sq || cur < 0) return;
+    const d = sq.duration || 0, c = Math.min(d, sq.currentTime || 0);
+    now.textContent = `${fmt(c)} / ${fmt(d)}`; if (document.activeElement !== pos && d) pos.value = String(Math.round(c / d * 1000));
+    if (d && (sq.isFinished || c >= d - 0.05)) { if (allC.checked) play((cur + 1) % list.length); else stopB.click(); }
+  }, 250);
+  if (!list.length) status.textContent = t('jbNone');
+  await p;
+}
 async function exportSaves(lang: Lang) {
   const files = await loadSaves(lang);
   if (!files.length) { await showModal(t('savesTitle'), t('savesNone'), 0); return; }
@@ -318,7 +378,9 @@ function renderLibrary() {
     im.append(inp, document.createTextNode(t('savesImport')));
     const mg = document.createElement('button'); mg.className = 'btn ghost small'; mg.textContent = t('savesManage');
     mg.onclick = () => void manageSaves(lang);
-    el.append(mg, ex, im);
+    const mu = document.createElement('button'); mu.className = 'btn ghost small'; mu.textContent = t('jbButton'); mu.title = t('jbTitle');
+    mu.onclick = () => void musicPlayer(lang);
+    el.append(mu, mg, ex, im);
     const rm = document.createElement('button'); rm.className = 'btn danger'; rm.textContent = t('remove');
     rm.onclick = async () => { if (confirm(t('removeConfirm'))) { await removeDisc(lang); renderLibrary(); } };
     el.appendChild(rm); list.appendChild(el);
@@ -601,8 +663,7 @@ async function startGame() {
   const shaderFile = (m: ActiveMod) => m.manifest.shader?.replace(/\{(\w+)\}/g, (_, k) => String(m.settings[k] ?? ''));
   const shaderMod = [...mods].reverse().find((m) => m.manifest.shader && fileText(m, shaderFile(m)!));
   const filter = shaderMod ? { name: `${shaderMod.manifest.id}:${shaderFile(shaderMod)}`, src: fileText(shaderMod, shaderFile(shaderMod)!)!, uniforms: Object.fromEntries((shaderMod.manifest.settings || []).filter((x) => x.type !== 'text' && x.type !== 'file').map((x) => ['u_' + x.key, Number(typeof shaderMod.settings[x.key] === 'boolean' ? +shaderMod.settings[x.key] : shaderMod.settings[x.key]) || 0])) } : null;
-  let customSf: Uint8Array | null = null;
-  for (const m of mods) { const d = (m.manifest.soundfont && fileData(m, m.manifest.soundfont)) || m.files.find((f) => f.path.startsWith('@setting/') && /\.sf[23]$/i.test(String(m.settings[f.path.slice(9)])))?.data; if (d) customSf = d; }
+  const customSf = customSoundfont(mods);
   let renderer: Renderer;
   try { renderer = new Renderer(canvas, filter); (window as any).__hi.renderer = renderer; } catch (e: any) { await showModal(t('errTitle'), String(e.message), 0); backToLauncher(); return; }
   const audio = new AudioEngine(); await audio.ctx.resume(); (window as any).__hi.audio = audio;
@@ -685,6 +746,8 @@ async function startGame() {
       // see keys before the game; return true to keep a key from the game
       onKey: (fn: (e: KeyboardEvent) => boolean | void) => { keyHooks.push(fn); },
       overlay: () => { const d = document.createElement('div'); d.className = 'mod-overlay'; game.appendChild(d); return d; },
+      // a window in the game's own style, moved by its title bar; where it was is remembered
+      window: (o: { title: string; width?: number; side?: 'left' | 'right'; onClose?: () => void }) => gameWindow(game, m.manifest.id, o),
     };
     try { new Function('api', src)(api); uiMods.push(handle); } catch (e) { console.error(`ui script of mod "${m.manifest.id}" failed:`, e); }
   }
@@ -801,8 +864,22 @@ async function startGame() {
   worker.onerror = (e) => { hiLog('error', `emulator worker error: ${e.message || e} ${e.filename || ''}:${e.lineno || ''}`); };
   worker.onmessageerror = () => hiLog('error', 'emulator worker message error');
 
+  // the game in the background (another window or tab in front): keep playing, or pause it with its sound
+  const pausedNote = document.createElement('div'); pausedNote.className = 'pausedNote'; pausedNote.hidden = true; game.appendChild(pausedNote);
+  let bgPaused = false;
+  const bgCheck = () => {
+    const p = alive && settings.bg === 'pause' && (document.hidden || !document.hasFocus());
+    if (p === bgPaused) return; bgPaused = p;
+    Atomics.store(ctrl, CTRL.PAUSE, p ? 1 : 0); Atomics.notify(ctrl, CTRL.PAUSE);
+    pausedNote.textContent = t('pausedNote'); pausedNote.hidden = !p;
+    if (p) void audio.ctx.suspend(); else void audio.ctx.resume();
+    hiLog('info', p ? 'paused (in the background)' : 'going on (in front again)');
+  };
+  window.addEventListener('blur', bgCheck); window.addEventListener('focus', bgCheck); document.addEventListener('visibilitychange', bgCheck);
+  const bgTimer = window.setInterval(bgCheck, 1000);   // a setting changed in the F10 menu
   const stop = () => {
     if (!alive) return; alive = false; quitHandler = null;
+    window.removeEventListener('blur', bgCheck); window.removeEventListener('focus', bgCheck); document.removeEventListener('visibilitychange', bgCheck); clearInterval(bgTimer); pausedNote.remove();
     worker.terminate(); audio.stopAll(); void audio.ctx.close();
     canvas.removeEventListener('pointermove', onMove); canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('pointerup', onUp);
     canvas.removeEventListener('pointerleave', onLeave); canvas.removeEventListener('wheel', onWheel); timers.forEach((x) => clearInterval(x)); game.querySelectorAll('.mod-overlay').forEach((d) => d.remove());
@@ -849,7 +926,7 @@ function openDrawer(audio?: AudioEngine) {
 // ---------------- bootstrap ----------------
 function bindSettings() {
   const sel = (id: string, key: keyof Settings) => { const el = $<HTMLSelectElement>(id); el.value = String(settings[key]); el.onchange = () => { (settings as any)[key] = el.value; saveSettings(); }; };
-  sel('optScale', 'scale'); sel('optAspect', 'aspect'); sel('optVideo', 'video'); sel('optMusicSrc', 'musicSrc');
+  sel('optScale', 'scale'); sel('optAspect', 'aspect'); sel('optBg', 'bg'); sel('optVideo', 'video'); sel('optMusicSrc', 'musicSrc');
   const rng = (id: string, out: string, key: 'music' | 'sfx') => { const el = $<HTMLInputElement>(id); el.value = String(settings[key]); $(out).textContent = settings[key] + '%'; el.oninput = () => { settings[key] = +el.value; $(out).textContent = el.value + '%'; saveSettings(); }; };
   rng('optMusic', 'musicOut', 'music'); rng('optSfx', 'sfxOut', 'sfx');
   const px = $<HTMLInputElement>('optProxy'); px.value = settings.dlProxy || ''; setDownloadProxy(px.value);
@@ -869,6 +946,47 @@ function bindModSettings() {
   showCrt();
   const fc = $<HTMLSelectElement>('optFilmColours'); fc.value = on('truecolor-video') ? 'true' : '256'; fc.onchange = () => setEnabled('truecolor-video', fc.value === 'true');
   const fx = $<HTMLInputElement>('optFixes'); fx.checked = on('bugfixes'); fx.onchange = () => setEnabled('bugfixes', fx.checked);
+}
+// a window for a mod's page script (api.window): looks like the game's windows (purple title bar with
+// yellow capitals, a close box on the left, wood-brown body) and is moved by its title bar
+function gameWindow(game: HTMLElement, id: string, o: { title: string; width?: number; side?: 'left' | 'right'; onClose?: () => void }) {
+  const layer = document.createElement('div'); layer.className = 'mod-overlay'; game.appendChild(layer);
+  const win = document.createElement('div'); win.className = 'hi-win'; win.hidden = true; win.style.width = (o.width || 340) + 'px';
+  const cap = document.createElement('div'); cap.className = 'cap';
+  const x = document.createElement('button'); x.className = 'x'; x.title = t('close') || 'Close';
+  const ttl = document.createElement('span'); ttl.textContent = o.title;
+  const body = document.createElement('div'); body.className = 'body';
+  cap.append(x, ttl); win.append(cap, body); layer.appendChild(win);
+  const key = 'hi.win.' + id;
+  let pos: { x: number; y: number } | null = null;
+  try { pos = JSON.parse(localStorage.getItem(key) || 'null'); } catch { pos = null; }
+  const place = () => {
+    const W = layer.clientWidth, H = layer.clientHeight, w = win.offsetWidth, h = win.offsetHeight;
+    let px = pos ? pos.x : o.side === 'left' ? 16 : W - w - 16, py = pos ? pos.y : 16;
+    px = Math.max(0, Math.min(W - Math.min(w, 80), px)); py = Math.max(0, Math.min(H - 24, py));
+    win.style.left = px + 'px'; win.style.top = py + 'px'; win.style.maxHeight = Math.max(120, H - py - 4) + 'px';
+  };
+  const api = {
+    body, el: win,
+    get shown() { return !win.hidden; },
+    show: () => { win.hidden = false; place(); },
+    hide: () => { win.hidden = true; },
+    toggle: () => { if (win.hidden) api.show(); else api.hide(); return !win.hidden; },
+    title: (s: string) => { ttl.textContent = s; },
+  };
+  x.onclick = (e) => { e.stopPropagation(); api.hide(); o.onClose?.(); };
+  cap.addEventListener('pointerdown', (e) => {
+    if (e.target === x) return;
+    e.preventDefault(); e.stopPropagation(); cap.setPointerCapture(e.pointerId);
+    const sx = e.clientX, sy = e.clientY, ox = win.offsetLeft, oy = win.offsetTop;
+    const mv = (ev: PointerEvent) => { pos = { x: ox + ev.clientX - sx, y: oy + ev.clientY - sy }; place(); };
+    const up = () => { cap.removeEventListener('pointermove', mv); cap.removeEventListener('pointerup', up); try { localStorage.setItem(key, JSON.stringify(pos)); } catch { /* */ } };
+    cap.addEventListener('pointermove', mv); cap.addEventListener('pointerup', up);
+  });
+  // keep clicks in the window away from the game
+  for (const ev of ['pointerdown', 'pointerup', 'click', 'wheel', 'contextmenu']) win.addEventListener(ev, (e) => e.stopPropagation());
+  window.addEventListener('resize', () => { if (layer.isConnected && !win.hidden) place(); });
+  return api;
 }
 // files of a drop; a dropped folder is walked (an installed game folder)
 async function droppedFiles(dt: DataTransfer | null): Promise<File[]> {

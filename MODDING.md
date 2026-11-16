@@ -159,11 +159,12 @@ api.postKey(vk)  // send a key press to the game
 api.call(sel, off, args)  // call a far function of the game, e.g. api.call(seg.sel, 0x2bae, [[ptr32, 4]])
                           // args: [value, 2 or 4] pairs in Pascal order (pushed first to last); returns DX:AX as one number
 api.disk     // { list(dir), read(path), remove(path) } the game's C: drive (saves); changes are persisted
-api.setSpeed(f, ms)  // speed factor 0.25 … 10 for the timers with interval ms (0: all timers under 500 ms)
+api.setSpeed(f, ms)  // the player's speed factor 0.25 … 100 for the timers with interval ms (0: all timers under 500 ms)
+api.holdSpeed(f, ms) // hold the speed for a while (0 = stopped); holdSpeed(null) lets go and the player's speed is back
 api.onDraw((px, w, h) => { … })  // draw on top of each presented frame (Uint32Array RGBA, w×h)
 api.onInput((e) => consumed)     // see input before the game: { type, x, y, button, vk }; return true to swallow it
 api.redraw()     // present a new frame now (e.g. after your onDraw output changed)
-api.getSpeed()   // the current speed factor (0 = the game clock is stopped by api.setSpeed(0, ms))
+api.getSpeed()   // the player's speed factor (set with api.setSpeed); api.speedNow is what runs now, api.speedHeld whether a mod holds it
 api.onCommand((cmd, arg) => { … })  // commands from this mod's ui.js (api.command)
 api.mem.u8      // all of the emulator's memory as a Uint8Array (api.mem.lin(sel, off) gives the index)
 ```
@@ -231,6 +232,7 @@ api.onMessage((data) => …)                // data sent by the mod's script.js 
 api.command(cmd, arg)                     // two whole numbers for the mod's script.js (api.onCommand)
 api.onKey((e) => handled)                 // keyboard events before the game; return true to keep them from the game
 api.overlay()                             // a <div> over the game (pointer-events: none) for your own HTML
+api.window({ title, width, side })      // a window in the game's style, moved by its title bar: { body, show(), hide(), toggle(), shown, title(s) }
 ```
 
 ---

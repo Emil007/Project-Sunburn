@@ -23,7 +23,9 @@ export function installUserApi(w: Win16) {
   U(6, 'PostQuitMessage', ['word'], 'v', ([c]) => { u.quit = true; u.quitCode = c; });
   U(10, 'SetTimer', ['word', 'word', 'word', 'segptr'], 'w', ([h, id, ms, p]) => u.setTimer(h, id, ms, p));
   U(12, 'KillTimer', ['word', 'word'], 'w', ([h, id]) => u.killTimer(h, id));
-  U(13, 'GetTickCount', [], 'l', () => Math.floor(w.platform.now()) >>> 0);
+  // a game waiting for the clock inside one call (an animation drawn in a loop, such as the bidding
+  // hand at auctions) shows its frames: the screen is presented while it polls (present() limits the rate)
+  U(13, 'GetTickCount', [], 'l', () => { w.present(); return Math.floor(w.platform.now()) >>> 0; });
   U(14, 'GetTimerResolution', [], 'l', () => 1000);
   U(17, 'GetCursorPos', ['ptr'], 'v', ([p]) => { const L = m.lin(p); mem.w16(L, u.mouseX); mem.w16(L + 2, u.mouseY); });
   U(18, 'SetCapture', ['word'], 'w', ([h]) => { const p = u.capture; u.capture = h; return p; });

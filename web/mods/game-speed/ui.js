@@ -1,4 +1,4 @@
-// Speed hotkeys: F5 normal, F6 2x, F7 5x, Pause pauses / goes on. Gamepad: RB steps through the speeds.
+// Speed hotkeys: F5 normal, F6 5x, F7 10x, Pause pauses / goes on. Gamepad: RB steps through the speeds.
 const KEYS = { F5: 0, F6: 1, F7: 2 };
 api.onKey((e) => {
   if (e.code in KEYS) { if (e.type === 'keydown' && !e.repeat) api.command(1, KEYS[e.code]); return true; }

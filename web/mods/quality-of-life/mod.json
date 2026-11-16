@@ -5,8 +5,8 @@
  "version": "1.0",
  "author": "Project Sunburn",
  "category": "Interface",
- "description": "Scroll the island with the mouse wheel (Shift+wheel scrolls sideways) or by dragging it with the right mouse button, and optionally by pushing the mouse against the screen edge. A right click without dragging works as before.",
- "description_de": "Insel mit dem Mausrad scrollen (Umschalt+Rad seitwärts) oder mit gedrückter rechter Maustaste ziehen, optional auch durch Bewegen der Maus an den Bildschirmrand. Ein Rechtsklick ohne Ziehen funktioniert wie gewohnt.",
+ "description": "Scroll the island with the mouse wheel (Shift+wheel scrolls sideways) or by dragging it with the right mouse button, and optionally by pushing the mouse against the screen edge. A right click without dragging works as before. Scrolling always moves the island, also when another window (finance, building mode) has the keyboard. On the overview map, drag with the right button, and a right click glides to the spot.",
+ "description_de": "Insel mit dem Mausrad scrollen (Umschalt+Rad seitwärts) oder mit gedrückter rechter Maustaste ziehen, optional auch durch Bewegen der Maus an den Bildschirmrand. Ein Rechtsklick ohne Ziehen funktioniert wie gewohnt. Scrollen bewegt immer die Insel, auch wenn ein anderes Fenster (Finanzen, Baumodus) die Tastatur hat. Auf der Übersichtskarte mit der rechten Taste ziehen; ein Rechtsklick gleitet dorthin.",
  "ui": "ui.js",
  "recommended": true,
  "settings": [

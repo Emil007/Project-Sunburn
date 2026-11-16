@@ -165,15 +165,17 @@ function findMasked(pat) {
 // News and auctions pause it (they run at normal speed, as in the game) and it goes on when they close.
 function skipDays(n) {
   if (st.ff) return;
-  st.ff = today() + n; st.ffPaused = false; st.speedBefore = api.getSpeed() || 1;
+  st.ff = today() + n; st.ffPaused = false;
   if (st.freezeTime) st.freezeTime = false;
   ffRun(true); send();
 }
-function ffRun(on) { api.skipDrawing(on); api.setSpeed(on ? FF_SPEED : 1, 100); }
+// the speed is held while fast-forwarding or with frozen time; letting go returns to the speed the
+// player chose with the speed buttons (and the game's own Game Speed option applies throughout)
+function ffRun(on) { api.skipDrawing(on); api.holdSpeed(on ? FF_SPEED : st.freezeTime ? 0 : null, 100); }
 function stopFF() {
   if (!st.ff) return;
   st.ff = 0; st.ffPaused = false; api.skipDrawing(false);
-  api.setSpeed(st.freezeTime ? 0 : st.speedBefore, 100);
+  api.holdSpeed(st.freezeTime ? 0 : null, 100);
   repaintAll(); send();
 }
 function repaintAll() { const u = api.win16.user; for (const w of u.tops) if (w.style & 0x10000000) u.invalidate(w.h, null, true); api.redraw(); }
@@ -203,7 +205,7 @@ api.onCommand((cmd, arg) => {
     case CMD.NEXT_AUCTION: nextAuction(); break;
     case CMD.ALL_ATTRACTIONS: allAttractions(); break;
     case CMD.SKIP_DAYS: skipDays(arg); break;
-    case CMD.FREEZE_TIME: st.freezeTime = !!arg; if (!st.ff) api.setSpeed(st.freezeTime ? 0 : 1, 100); send(); break;
+    case CMD.FREEZE_TIME: st.freezeTime = !!arg; if (!st.ff) api.holdSpeed(st.freezeTime ? 0 : null, 100); send(); break;
     case CMD.BANKRUPT: bankrupt(arg); break;
     case CMD.STATE: send(); break;
     case CMD.STOP_FF: stopFF(); break;
