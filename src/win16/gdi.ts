@@ -64,8 +64,18 @@ export class GDI {
   private setSys(i: number, c: number[]) { this.sysPal[i * 4] = c[0]; this.sysPal[i * 4 + 1] = c[1]; this.sysPal[i * 4 + 2] = c[2]; this.sysPal[i * 4 + 3] = 255; }
   defaultPalEntries() { const e = new Uint8Array(20 * 4); for (let i = 0; i < 20; i++) { e[i * 4] = STATIC20[i][0]; e[i * 4 + 1] = STATIC20[i][1]; e[i * 4 + 2] = STATIC20[i][2]; } return e; }
   newSurface(w: number, h: number, mono: boolean): Surface { w = Math.max(1, w | 0); h = Math.max(1, h | 0); return { w, h, mono, data: new Uint8Array(w * h) }; }
-  alloc(o: GObj) { const h = this.nextH; this.nextH += 2; if (this.nextH > 0xfff0) this.nextH = 0x2000; while (this.objs.has(this.nextH) || this.dcs.has(this.nextH)) this.nextH += 2; this.objs.set(h, o); return h; }
-  allocDC(dc: Omit<DC, 'h'>): DC { const h = this.nextH; this.nextH += 2; while (this.objs.has(this.nextH) || this.dcs.has(this.nextH)) this.nextH += 2; const d = dc as DC; d.h = h; this.dcs.set(h, d); return d; }
+  /** next free 16-bit GDI handle (0x2000..0xfffe, wraps around and skips handles in use).
+   *  Handles must stay below 0x10000: the game keeps them in 16-bit variables, and a DC handle
+   *  that wrapped to 0 after ~28,000 DCs made Delphi's FreeMemoryContexts loop forever. */
+  private newHandle() {
+    for (let n = 0; n < 0x7000; n++) {
+      const h = this.nextH; this.nextH += 2; if (this.nextH > 0xfffe) this.nextH = 0x2000;
+      if (!this.objs.has(h) && !this.dcs.has(h)) return h;
+    }
+    throw new Error('out of GDI handles');
+  }
+  alloc(o: GObj) { const h = this.newHandle(); this.objs.set(h, o); return h; }
+  allocDC(dc: Omit<DC, 'h'>): DC { const h = this.newHandle(); const d = dc as DC; d.h = h; this.dcs.set(h, d); return d; }
 
   // ---- colors ----
   nearest(rgb: number): number {

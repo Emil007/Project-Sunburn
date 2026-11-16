@@ -101,6 +101,7 @@ rt.attach(w);
 w.load('C:\\HOLIDAY\\HOLIDAY.EXE', exe);
 rt.applyLoad();
 w.begin();
+if (opt('gdiStart')) (w.gdi as any).nextH = parseInt(opt('gdiStart'), 16); // test GDI handle wrap-around
 const cpu = w.m.cpu;
 const t0 = Date.now();
 if (opt('bp')) {
