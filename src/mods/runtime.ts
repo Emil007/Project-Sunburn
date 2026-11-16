@@ -87,6 +87,8 @@ export class ModRuntime {
       onTick: (fn: (now: number) => void) => { rt.tickHooks.push(fn); },
       onCommand: (fn: (cmd: number, arg: number) => void) => { (rt.commandHooks.get(id) || rt.commandHooks.set(id, []).get(id)!).push(fn); },
       getSpeed: () => rt.w.user.timerScale,
+      // fast-forward helper: the game skips most of its drawing (RectVisible reports nothing visible)
+      skipDrawing: (on: boolean) => { rt.w.gdi.skipDraw = !!on; },
       wrapApi: (name: string, fn: (args: number[], orig: (a: number[]) => any) => any) => { rt.apiWraps.push({ name, fn }); },
       compositor: (o: CompositorOptions) => { Object.assign(rt.compositor, o); },
       get win16() { return rt.w; },

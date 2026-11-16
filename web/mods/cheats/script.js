@@ -12,15 +12,15 @@
 //
 // Everything is located by code signatures, so it works with the English and the German release.
 const CMD = { MONEY: 1, FREEZE_MONEY: 2, KEEP_WIN: 3, NEXT_BUILDING: 4, ALL_BUILDINGS: 5, NEXT_AUCTION: 6, ALL_ATTRACTIONS: 7,
-  SKIP_DAYS: 8, FREEZE_TIME: 9, BANKRUPT: 10, STATE: 11 };
-const FF_SPEED = 40;   // faster makes it slower: the game spends its time on the extra ticks
+  SKIP_DAYS: 8, FREEZE_TIME: 9, BANKRUPT: 10, STATE: 11, STOP_FF: 12 };
+const FF_SPEED = 100;  // the game clock runs 100x as fast (the most the emulator keeps up with is about 40 days a second)
 const EV_SIZE = 0x34, TYPE_AUCTION = 1, TYPE_NEW_BUILDING = 6, CERTAIN = 1000000;
 const LANDMARK_PRICE = { 29: 120000, 30: 80000, 35: 1600000, 37: 1000000, 60: 3000000, 110: 500000, 108: 2000000, 125: 1200000, 126: 700000 };
 
 let A = null;          // addresses found in onLoad
 let menuFile = null, priceFile = null;
 const bankrupted = new Set();
-const st = { freezeMoney: false, frozenMoney: 0, keepWin: false, freezeTime: false, ff: 0, speedBefore: 1 };
+const st = { freezeMoney: false, frozenMoney: 0, keepWin: false, freezeTime: false, ff: 0, ffPaused: false, speedBefore: 1 };
 
 const hex = (n) => n.toString(16);
 const word = (b, i) => b[i] | (b[i + 1] << 8);
@@ -57,6 +57,8 @@ const w32 = (sel, off, v) => { M().w16(sel, off, v & 0xffff); M().w16(sel, off +
 const today = () => r32(ds(), A.day);
 const playerCount = () => M().r8(ds(), A.players);
 const moneyOf = (p) => r32(ds(), A.money + p * 4);
+// each player's colour, 1..8 in the order of the start menu (DS:73h + player, same in both releases)
+const colourOf = (p) => M().r8(ds(), 0x73 + p);
 const nameOf = (p) => { const n = M().r8(ds(), 2 + p * 0x100); let s = ''; for (let i = 1; i <= n && i < 40; i++) s += String.fromCharCode(M().r8(ds(), 2 + p * 0x100 + i)); return s; };
 function eventTable() {
   const off = M().r16(ds(), A.events), sel = M().r16(ds(), A.events + 2);
@@ -97,13 +99,14 @@ function unlockBuilding(e) {
   api.call(A.unlock.sel, A.unlock.off, [[e.house & 0xff, 2], [0, 2]]);
   w32(e.sel, e.o, 0);   // the event has happened
 }
-function nextBuilding() { later(() => { const e = pending(TYPE_NEW_BUILDING)[0]; if (e) { unlockBuilding(e); api.log(`unlocked building ${e.house}`); } send(); }); }
+// the next one goes through the game's own event, so the news announces it (tomorrow)
+function nextBuilding() { const e = pending(TYPE_NEW_BUILDING)[0]; if (e) { fireTomorrow(e); api.log(`building ${e.house} unlocks tomorrow`); } send(); }
+function fireTomorrow(e) { const d = today(); w32(e.sel, e.o, CERTAIN); w32(e.sel, e.o + 4, d); w32(e.sel, e.o + 8, d + 3); }
 function allBuildings() { later(() => { const list = pending(TYPE_NEW_BUILDING); for (const e of list) unlockBuilding(e); api.log(`unlocked ${list.length} buildings`); send(); }); }
 function nextAuction() {
   const e = pending(TYPE_AUCTION)[0]; if (!e) return;
   // happens on the next day: the game checks from <= day <= to and rolls the probability
-  const d = today();
-  w32(e.sel, e.o, CERTAIN); w32(e.sel, e.o + 4, d); w32(e.sel, e.o + 8, d + 3);
+  fireTomorrow(e);
   api.log(`auction ${e.house || ''} starts tomorrow (event at ${hex(e.o)})`); send();
 }
 
@@ -158,11 +161,30 @@ function findMasked(pat) {
   }
   return -1;
 }
+// fast-forward: the game clock runs FF_SPEED times faster and the game skips most of its drawing.
+// News and auctions pause it (they run at normal speed, as in the game) and it goes on when they close.
 function skipDays(n) {
   if (st.ff) return;
-  st.ff = today() + n; st.speedBefore = api.getSpeed() || 1;
+  st.ff = today() + n; st.ffPaused = false; st.speedBefore = api.getSpeed() || 1;
   if (st.freezeTime) st.freezeTime = false;
-  api.setSpeed(FF_SPEED, 100); send();
+  ffRun(true); send();
+}
+function ffRun(on) { api.skipDrawing(on); api.setSpeed(on ? FF_SPEED : 1, 100); }
+function stopFF() {
+  if (!st.ff) return;
+  st.ff = 0; st.ffPaused = false; api.skipDrawing(false);
+  api.setSpeed(st.freezeTime ? 0 : st.speedBefore, 100);
+  repaintAll(); send();
+}
+function repaintAll() { const u = api.win16.user; for (const w of u.tops) if (w.style & 0x10000000) u.invalidate(w.h, null, true); api.redraw(); }
+// a news broadcast or an auction is on screen
+function interrupted() {
+  for (const w of api.win16.user.tops) {
+    if (!(w.style & 0x10000000)) continue;
+    const n = (w.cls && w.cls.name || '').toUpperCase();
+    if (n === 'TFERNSEHER' || n === 'TAUKTIONSFORM') return true;
+  }
+  return false;
 }
 function bankrupt(p) {
   if (p < 2 || p > playerCount()) return;   // never the player
@@ -184,6 +206,7 @@ api.onCommand((cmd, arg) => {
     case CMD.FREEZE_TIME: st.freezeTime = !!arg; if (!st.ff) api.setSpeed(st.freezeTime ? 0 : 1, 100); send(); break;
     case CMD.BANKRUPT: bankrupt(arg); break;
     case CMD.STATE: send(); break;
+    case CMD.STOP_FF: stopFF(); break;
   }
 });
 
@@ -191,9 +214,9 @@ let lastSent = '';
 function send() {
   if (!inGame()) { api.toUI({ inGame: false }); return; }
   const rivals = [];
-  for (let p = 2; p <= playerCount(); p++) rivals.push({ p, name: nameOf(p), broke: bankrupted.has(p) });
+  for (let p = 2; p <= playerCount(); p++) rivals.push({ p, name: nameOf(p), colour: colourOf(p), broke: bankrupted.has(p) });
   const s = { inGame: true, rivals, buildingsLeft: pending(TYPE_NEW_BUILDING).length, auctionsLeft: pending(TYPE_AUCTION).length,
-    freezeMoney: st.freezeMoney, keepWin: st.keepWin, freezeTime: st.freezeTime, ff: st.ff ? Math.max(0, st.ff - today()) : 0 };
+    freezeMoney: st.freezeMoney, keepWin: st.keepWin, freezeTime: st.freezeTime, ff: st.ff ? Math.max(0, st.ff - today()) : 0, ffPaused: st.ffPaused };
   const j = JSON.stringify(s); if (j === lastSent) return; lastSent = j; api.toUI(s);
 }
 
@@ -202,6 +225,9 @@ api.onTick(() => {
   if (!inGame()) return;
   if (st.freezeMoney && moneyOf(1) !== st.frozenMoney) w32(ds(), A.money + 4, st.frozenMoney);
   if (st.keepWin && M().r8(ds(), A.flag)) M().w8(ds(), A.flag, 0);
-  if (st.ff && today() >= st.ff) { st.ff = 0; api.setSpeed(st.freezeTime ? 0 : st.speedBefore, 100); }
-  if (++n % 20 === 0) send();
+  if (st.ff) {
+    if (today() >= st.ff) stopFF();
+    else if (interrupted() !== st.ffPaused) { st.ffPaused = !st.ffPaused; ffRun(!st.ffPaused); if (st.ffPaused) repaintAll(); send(); }
+  }
+  if (++n % (st.ff ? 3 : 20) === 0) send();
 });

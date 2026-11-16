@@ -34,6 +34,8 @@ export class GDI {
   objs = new Map<number, GObj>();
   dcs = new Map<number, DC>();
   private nextH = 0x2000;
+  /** while set, RectVisible says nothing is visible, so the game skips most drawing (fast-forward) */
+  skipDraw = false;
   sysPal = new Uint8Array(256 * 4);
   palVersion = 0;
   nearestCache = new Map<number, number>();

@@ -110,3 +110,10 @@ footer { text-align: center; margin-top: auto; } footer a { color: var(--muted);
 .field.wide { grid-column: 1 / -1; }
 .field input[type=url] { padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .22); background: rgba(0, 0, 0, .25); color: inherit; font: inherit; }
 .field small { font-size: 12px; }
+.grid > h4 { grid-column: 1 / -1; margin: 6px 0 -6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; opacity: .7; }
+.grid > h4:first-child { margin-top: 0; }
+.field label.chk { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.savelist { display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto; margin-top: 4px; text-align: left; }
+.saverow { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; background: rgba(127,127,127,.12); }
+.saverow .meta { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.saverow .meta span { font-size: 12px; opacity: .75; }

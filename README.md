@@ -88,6 +88,7 @@ the emulator needs (`npm run serve` for a local test). The official build is at 
 Disc images are imported once into the browser's private storage (OPFS). Nothing is uploaded anywhere.
 
 ### Saves
+**Saves…** next to each disc lists your saved islands (player and date) to rename, delete or download one by one.
 Savegames (`MAPS\*.MAP`), high scores and other files the game writes are kept per language in private
 storage and restored on the next start. **Export saves** / **Import saves** next to each disc in the
 launcher move them as a `.zip` (or single `.MAP` files). The format is the game's own and the same in
@@ -113,11 +114,11 @@ routines, so everything that follows (news, auctions, bankruptcies) happens by t
 | +1 million / +1 billion | Money, like the original cheat but without its penalty. |
 | Freeze money | Your balance stays the same whatever you spend. |
 | Original cheat without penalty | The original money cheat (hold **Ctrl + Shift + Alt** and press **G**) marks your game and you can no longer win. With this on you still can. |
-| Buildings: unlock next / all | The buildings that otherwise appear during the game (villas, the named hotels, clubs, …). |
+| Buildings: unlock next / all | The buildings that otherwise appear during the game (villas, the named hotels, clubs, …). "Next" is announced in the news the next day. |
 | Attractions: start next auction / all | Start the next landmark auction (it begins the next day), or put every landmark (Stonehenge, Eiffel Tower, …) into the Attractions menu at its auction starting price. |
-| Fast-forward a week / month / year | The game runs at high speed until the date is reached, so construction, tourists, money and events all happen as usual. |
+| Fast-forward a week / month / year | The game runs at up to 100× speed until the date is reached (a year takes about ten seconds), so construction, tourists, money and events all happen as usual. News and auctions pause it and play at normal speed; **Stop** ends it early. |
 | Freeze time | The clock stops: no new days, construction waits. |
-| Rivals: bankrupt | Pick one computer player by name. They go bankrupt by the game's own rules and their property is auctioned. You can't pick yourself. |
+| Rivals: bankrupt | Pick one computer player by name and colour. They go bankrupt by the game's own rules and their property is auctioned. You can't pick yourself. |
 
 Cheats from the menu never cost you the win. The game also has a hidden developer key in the German
 release: **Ctrl + Shift + Alt + N / M** make the game clock faster or slower.
@@ -142,24 +143,22 @@ The desktop app takes the same options on the command line (for shortcuts and ot
 
 ## Original game + mods
 Without mods the port shows the game as it was in 1996: 640×480, 256 colours, pixels scaled with plain
-nearest‑neighbour. Every improvement is a **mod** you switch on in the launcher (**Mods**). The
+nearest‑neighbour. Every improvement is a **mod** you switch on in the launcher (**Mods**); the screen filter (sharp, smooth, Scale4x, CRT), true-colour films and the fixes for mistakes of the original release are under **Settings**. The
 **Recommended** preset is on by default and **Original** turns everything off. Mods take effect at the
 next start.
 
 | Mod | What it does |
 |---|---|
-| Screen filter *(recommended)* | How the picture is scaled: Sharp (even, square pixels at any scale), Smooth, Edge smoothing (Scale4x) or CRT monitor. |
-| True‑colour video *(recommended)* | Films decoded in true colour instead of dithered to 256 colours. |
-| Large island view *(experimental)* | The main map fills a bigger window (800×600 up to 2560×1440). The map renderer, mouse picking, window chrome and the desktop background are patched by signature, and saves stay compatible with the original. Optional **desktop**: the screen is bigger than the map window, so the game's windows (finances, overview map, …) open next to the map instead of on top of it, and every window, the map included, can be dragged around. |
+| Large island view *(recommended)* | See much more of the island: the map window gets bigger than 640×480 (automatically fitted to your screen, or a fixed size up to 1920×1064), and the screen around it leaves room for the finance, map and other windows, so they open next to the island instead of covering it. Every window can be moved by its title bar. Saves stay compatible with the original. |
 | Modern menus *(recommended)* | Drop shadows, fade‑in, optional dimming behind game windows. |
 | Gamepad controls *(recommended)* | Gamepad / Steam Deck controls, see above. |
 | Quality of life *(recommended)* | Scroll the island with the mouse wheel or by dragging with the right mouse button, optional edge scrolling. |
 | Autosave *(recommended)* | Saves on the 1st of every in‑game month as `AUTOyymm` and keeps the newest 5 (adjustable). Load them like any other save. |
-| Game speed *(recommended)* | Three buttons in front of the date, drawn in the game's own style: ▶ normal, ▶▶ 2×, ▶▶▶ 5×, with tooltips. |
+| Game speed *(recommended)* | Three buttons in front of the date, drawn in the game's own style: ▶ normal, ▶▶ 2×, ▶▶▶ 5×, with tooltips. Keys F5 / F6 / F7, **Pause** stops the clock; gamepad RB steps through the speeds. |
+| Rivals overview *(recommended)* | **F8**: every player with colour and money, and a chart of how the money developed during this session. |
 | Skip intros | Skip the intro film and/or the flight to the island after Start. |
 | Custom SoundFont | Play the music with your own .sf2/.sf3. |
 | Currency | Replace DM / £ in all game texts, e.g. with € (also $, ¥, CHF, öS, ₿, custom). Missing symbols are drawn into the game's own bitmap font. |
-| Original bug fixes *(recommended)* | E.g. the English release asks for `floatin'.mid` but installs `FLOATIN.MID` ("MCI error 275"). |
 
 Mods are folders or `.zip` files with a `mod.json`. They can replace game files, add screen shaders,
 patch the game's code, edit its forms, hook Windows calls, add UI helpers or bring a SoundFont.

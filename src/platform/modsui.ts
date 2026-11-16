@@ -28,14 +28,14 @@ export function renderMods(c?: Ctx) {
     const dir = $('modDir') as HTMLInputElement; dir.onchange = () => { if (dir.files?.length) void inst([...dir.files]); dir.value = ''; };
   }
   // preset highlight
-  const rec = [...catalogue.values()].filter((e) => e.manifest.recommended && !e.manifest.hidden).map((e) => e.manifest.id).sort().join();
-  const on = Object.keys(modState.enabled).filter((k) => modState.enabled[k] && catalogue.has(k) && !catalogue.get(k)!.manifest.hidden).sort().join();
+  const rec = [...catalogue.values()].filter((e) => e.manifest.recommended && !e.manifest.hidden && !e.manifest.setting).map((e) => e.manifest.id).sort().join();
+  const on = Object.keys(modState.enabled).filter((k) => modState.enabled[k] && catalogue.has(k) && !catalogue.get(k)!.manifest.hidden && !catalogue.get(k)!.manifest.setting).sort().join();
   $('modPresets').querySelectorAll('button').forEach((b) => b.classList.toggle('on', ((b as HTMLElement).dataset.p === 'original' && !on) || ((b as HTMLElement).dataset.p === 'recommended' && on === rec)));
-  $('modsCount').textContent = String(enabledMods(lang).filter((e) => !e.manifest.hidden).length);
+  $('modsCount').textContent = String(enabledMods(lang).filter((e) => !e.manifest.hidden && !e.manifest.setting).length);
 
   const list = $('modList'); list.innerHTML = '';
   const groups = new Map<string, ModEntry[]>();
-  for (const e of catalogue.values()) { if (e.manifest.hidden) continue; const c = CATS.includes(e.manifest.category || '') ? e.manifest.category! : 'Other'; (groups.get(c) || groups.set(c, []).get(c)!).push(e); }
+  for (const e of catalogue.values()) { if (e.manifest.hidden || e.manifest.setting) continue; const c = CATS.includes(e.manifest.category || '') ? e.manifest.category! : 'Other'; (groups.get(c) || groups.set(c, []).get(c)!).push(e); }
   for (const cat of [...CATS, 'Other']) {
     const items = groups.get(cat); if (!items?.length) continue;
     list.append(el('div', { className: 'modcat', textContent: t('cat' + cat) }));

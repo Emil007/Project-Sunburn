@@ -1,4 +1,13 @@
-{ "id": "bugfixes", "name": "Original bug fixes", "name_de": "Fehlerbehebungen", "version": "1.0", "author": "Project Sunburn", "category": "Fixes",
-  "description": "Fixes mistakes in the original release. English version: the music track \"Floatin'\" is requested as floatin'.mid but installed as FLOATIN.MID, which caused \"MCI error 275\".",
-  "description_de": "Behebt Fehler der Originalversion. Englische Version: Das Musikstück „Floatin'“ wird als floatin'.mid angefordert, aber als FLOATIN.MID installiert (\"MCI error 275\").",
-  "script": "script.js", "recommended": true }
+{
+ "id": "bugfixes",
+ "name": "Original bug fixes",
+ "name_de": "Fehlerbehebungen",
+ "version": "1.0",
+ "author": "Project Sunburn",
+ "category": "Fixes",
+ "description": "Fixes mistakes in the original release. English version: the music track \"Floatin'\" is requested as floatin'.mid but installed as FLOATIN.MID, which caused \"MCI error 275\".",
+ "description_de": "Behebt Fehler der Originalversion. Englische Version: Das Musikstück „Floatin'“ wird als floatin'.mid angefordert, aber als FLOATIN.MID installiert (\"MCI error 275\").",
+ "script": "script.js",
+ "recommended": true,
+ "setting": true
+}

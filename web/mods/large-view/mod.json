@@ -2,21 +2,25 @@
  "id": "large-view",
  "name": "Large island view",
  "name_de": "Große Inselansicht",
- "version": "0.1",
+ "version": "1.0",
  "author": "Project Sunburn",
  "category": "Graphics",
- "description": "Enlarges the main map so you see much more of the island, and optionally gives you a bigger desktop where the game's windows open next to the map instead of on top of it. All windows, the map included, can be dragged by their title bar. Patches the original map renderer (experimental).",
- "description_de": "Vergrößert die Hauptkarte, sodass viel mehr von der Insel sichtbar ist, und bietet optional einen größeren Desktop, auf dem die Spielfenster neben der Karte statt darüber aufgehen. Alle Fenster, auch die Karte, lassen sich an der Titelleiste verschieben. Ändert den Original-Kartenrenderer (experimentell).",
+ "description": "See much more of your island. The main map window gets bigger than the original 640×480, and the screen around it leaves room for the finance, map and other windows, so they open next to the island instead of covering it. Every window, the map included, can be moved by its title bar. Saves stay compatible with the original game.",
+ "description_de": "Viel mehr von der Insel sehen. Das Kartenfenster wird größer als die originalen 640×480, und rundherum bleibt Platz für Finanzen, Übersichtskarte und die anderen Fenster – sie öffnen sich neben der Insel statt darüber. Jedes Fenster, auch die Karte, lässt sich an der Titelleiste verschieben. Spielstände bleiben mit dem Originalspiel kompatibel.",
  "script": "script.js",
- "experimental": true,
  "settings": [
   {
    "key": "size",
    "type": "select",
-   "label": "Map window size",
-   "label_de": "Größe des Kartenfensters",
-   "default": "1280x800",
+   "label": "Size of the island view",
+   "label_de": "Größe der Inselansicht",
+   "default": "auto",
    "options": [
+    {
+     "value": "auto",
+     "label": "Automatic (fits your screen)",
+     "label_de": "Automatisch (passend zum Bildschirm)"
+    },
     {
      "value": "800x600",
      "label": "800 × 600"
@@ -55,30 +59,27 @@
     },
     {
      "value": "1920x1080",
-     "label": "1920 × 1080"
-    },
-    {
-     "value": "2560x1440",
-     "label": "2560 × 1440"
+     "label": "1920 × 1064 (the biggest the game can draw)",
+     "label_de": "1920 × 1064 (das Größte, was das Spiel zeichnen kann)"
     }
    ]
   },
   {
    "key": "desktop",
    "type": "select",
-   "label": "Desktop (space for the game's windows)",
-   "label_de": "Desktop (Platz für die Spielfenster)",
-   "default": "off",
+   "label": "Room for the game's windows",
+   "label_de": "Platz für die Spielfenster",
+   "default": "auto",
    "options": [
     {
      "value": "off",
-     "label": "Same as the map window",
-     "label_de": "Wie das Kartenfenster"
+     "label": "None (only the island view)",
+     "label_de": "Keiner (nur die Inselansicht)"
     },
     {
      "value": "auto",
-     "label": "Fill my screen/window",
-     "label_de": "Bildschirm/Fenster füllen"
+     "label": "Fill my screen (recommended)",
+     "label_de": "Bildschirm füllen (empfohlen)"
     },
     {
      "value": "1600x900",
@@ -98,5 +99,6 @@
     }
    ]
   }
- ]
+ ],
+ "recommended": true
 }

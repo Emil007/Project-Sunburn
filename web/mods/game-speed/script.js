@@ -116,9 +116,18 @@ api.onInput((e) => {
   // mouseup
   if (pressed < 0) return false;
   const p = pressed; pressed = -1;
-  if (i === p) { speed = p; api.setSpeed(SPEEDS[p], TICK); api.log(`speed ${SPEEDS[p]}x`); }
+  if (i === p) choose(p);
   api.redraw();
   return true;
+});
+
+// keyboard and gamepad (ui.js): 1 = choose a speed (0, 1, 2), 2 = pause / go on
+let lastSpeed = 0;
+function choose(p) { speed = p; if (p >= 0) lastSpeed = p; api.setSpeed(p < 0 ? 0 : SPEEDS[p], TICK); api.log(p < 0 ? 'paused' : `speed ${SPEEDS[p]}x`); api.redraw(); }
+api.onCommand((cmd, arg) => {
+  if (cmd === 1 && arg >= 0 && arg < SPEEDS.length) choose(arg);
+  if (cmd === 2) choose(speed < 0 ? lastSpeed : -1);
+  if (cmd === 3) choose(speed < 0 ? lastSpeed : (speed + 1) % SPEEDS.length);
 });
 
 // keep the tooltip appearing even when nothing else changes on screen

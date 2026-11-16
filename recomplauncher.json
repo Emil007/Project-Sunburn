@@ -6,123 +6,405 @@
   "game": {
     "kind": "iso",
     "label": "Your Holiday Island CD (English or German, 1996): the .iso, or the .mdf with its .mds beside it.",
-    "check": { "iso9660": "HOLIDA1A.ICO" },
+    "check": {
+      "iso9660": "HOLIDA1A.ICO"
+    },
     "dumps": [
-      { "name": "German (Bomico, .iso)", "size": 210239488, "crc32": "01c52522" },
-      { "name": "English (.mdf)", "size": 414510048, "crc32": "130c7f4b" }
+      {
+        "name": "German (Bomico, .iso)",
+        "size": 210239488,
+        "crc32": "01c52522"
+      },
+      {
+        "name": "English (.mdf)",
+        "size": 414510048,
+        "crc32": "130c7f4b"
+      }
     ]
   },
   "start": {
-    "program": ["Project Sunburn.exe", "ProjectSunburn.AppImage", "project-sunburn"],
-    "args": ["--disc", "{game}"]
+    "program": [
+      "Project Sunburn.exe",
+      "ProjectSunburn.AppImage",
+      "project-sunburn"
+    ],
+    "args": [
+      "--disc",
+      "{game}"
+    ]
   },
-  "saves": ["{documents}/Project Sunburn/Saves"],
+  "saves": [
+    "{documents}/Project Sunburn/Saves"
+  ],
   "folders": {
-    "saves": [{ "path": "{documents}/Project Sunburn/Saves" }]
+    "saves": [
+      {
+        "path": "{documents}/Project Sunburn/Saves"
+      }
+    ]
   },
   "actions": [
-    { "id": "saves", "label": "Saves", "help": "Your saved islands (the game's own .MAP files).", "open": "saves" }
+    {
+      "id": "saves",
+      "label": "Saves",
+      "help": "Your saved islands (the game's own .MAP files).",
+      "open": "saves"
+    }
   ],
-  "exit_codes": { "0": "ok" },
-  "groups": [ { "id": "Mods", "advanced": false } ],
+  "exit_codes": {
+    "0": "ok"
+  },
+  "groups": [
+    {
+      "id": "Mods",
+      "advanced": false
+    }
+  ],
   "settings": [
     {
-      "id": "window", "label": "Window", "in": "args",
+      "id": "window",
+      "label": "Window",
+      "in": "args",
       "help": "Full screen or a window. Big Picture mode always starts in full screen.",
       "choices": [
-        { "label": "Game's option", "args": [] },
-        { "label": "Full screen", "args": ["--fullscreen"] },
-        { "label": "Window", "args": ["--windowed"] }
+        {
+          "label": "Game's option",
+          "args": []
+        },
+        {
+          "label": "Full screen",
+          "args": [
+            "--fullscreen"
+          ]
+        },
+        {
+          "label": "Window",
+          "args": [
+            "--windowed"
+          ]
+        }
       ]
     },
     {
-      "id": "scale", "label": "Picture size", "in": "args",
+      "id": "scale",
+      "label": "Picture size",
+      "in": "args",
       "help": "Sharp keeps every pixel the same size and never shrinks the picture; Fit fills the window and can blur small text.",
       "choices": [
-        { "label": "Game's option", "args": [] },
-        { "label": "Sharp", "args": ["--set", "scale=pixel"] },
-        { "label": "Fit to window", "args": ["--set", "scale=fit"] }
+        {
+          "label": "Game's option",
+          "args": []
+        },
+        {
+          "label": "Sharp",
+          "args": [
+            "--set",
+            "scale=pixel"
+          ]
+        },
+        {
+          "label": "Fit to window",
+          "args": [
+            "--set",
+            "scale=fit"
+          ]
+        }
       ]
     },
     {
-      "id": "aspect", "label": "Shape", "in": "args",
+      "id": "aspect",
+      "label": "Shape",
+      "in": "args",
       "help": "Keep the 4:3 picture, or stretch it over the whole screen (only with Fit to window).",
       "choices": [
-        { "label": "Game's option", "args": [] },
-        { "label": "Keep 4:3", "args": ["--set", "aspect=4:3"] },
-        { "label": "Stretch", "args": ["--set", "aspect=stretch"] }
+        {
+          "label": "Game's option",
+          "args": []
+        },
+        {
+          "label": "Keep 4:3",
+          "args": [
+            "--set",
+            "aspect=4:3"
+          ]
+        },
+        {
+          "label": "Stretch",
+          "args": [
+            "--set",
+            "aspect=stretch"
+          ]
+        }
       ]
     },
     {
-      "id": "music", "label": "Music volume", "in": "args",
+      "id": "music",
+      "label": "Music volume",
+      "in": "args",
       "help": "The game's MIDI music, played with a SoundFont.",
-      "slider": { "key": "music", "min": 0, "max": 100, "step": 5, "format": "%g" },
-      "args": ["--set", "music={value}"]
+      "slider": {
+        "key": "music",
+        "min": 0,
+        "max": 100,
+        "step": 5,
+        "format": "%g"
+      },
+      "args": [
+        "--set",
+        "music={value}"
+      ]
     },
     {
-      "id": "sfx", "label": "Sound volume", "in": "args",
+      "id": "sfx",
+      "label": "Sound volume",
+      "in": "args",
       "help": "Sound effects and speech.",
-      "slider": { "key": "sfx", "min": 0, "max": 100, "step": 5, "format": "%g" },
-      "args": ["--set", "sfx={value}"]
+      "slider": {
+        "key": "sfx",
+        "min": 0,
+        "max": 100,
+        "step": 5,
+        "format": "%g"
+      },
+      "args": [
+        "--set",
+        "sfx={value}"
+      ]
     },
     {
-      "id": "ui", "label": "Menu language", "in": "args",
+      "id": "ui",
+      "label": "Menu language",
+      "in": "args",
       "help": "The language of the app's own menus. The game speaks the language of your CD.",
       "choices": [
-        { "label": "Game's option", "args": [] },
-        { "label": "English", "args": ["--set", "ui=en"] },
-        { "label": "Deutsch", "args": ["--set", "ui=de"] }
+        {
+          "label": "Game's option",
+          "args": []
+        },
+        {
+          "label": "English",
+          "args": [
+            "--set",
+            "ui=en"
+          ]
+        },
+        {
+          "label": "Deutsch",
+          "args": [
+            "--set",
+            "ui=de"
+          ]
+        }
       ]
     },
     {
-      "id": "largeview", "label": "Large island view", "in": "args", "group": "Mods",
+      "id": "largeview",
+      "label": "Large island view",
+      "in": "args",
+      "group": "Mods",
       "help": "A bigger view of the island, with room for the game's windows beside it.",
       "choices": [
-        { "label": "Game's option", "args": [] },
-        { "label": "Original 640×480", "args": ["--mod", "large-view=off"] },
-        { "label": "1280×720", "args": ["--mod", "large-view=on", "--modset", "large-view.size=1280x720"] },
-        { "label": "1600×900", "args": ["--mod", "large-view=on", "--modset", "large-view.size=1600x900"] },
-        { "label": "1920×1080", "args": ["--mod", "large-view=on", "--modset", "large-view.size=1920x1080"] }
+        {
+          "label": "Game's option",
+          "args": []
+        },
+        {
+          "label": "Original 640×480",
+          "args": [
+            "--mod",
+            "large-view=off"
+          ]
+        },
+        {
+          "label": "Fit my screen",
+          "args": [
+            "--mod",
+            "large-view=on",
+            "--modset",
+            "large-view.size=auto",
+            "--modset",
+            "large-view.desktop=auto"
+          ]
+        },
+        {
+          "label": "1280×720",
+          "args": [
+            "--mod",
+            "large-view=on",
+            "--modset",
+            "large-view.size=1280x720"
+          ]
+        },
+        {
+          "label": "1600×900",
+          "args": [
+            "--mod",
+            "large-view=on",
+            "--modset",
+            "large-view.size=1600x900"
+          ]
+        },
+        {
+          "label": "1920×1064",
+          "args": [
+            "--mod",
+            "large-view=on",
+            "--modset",
+            "large-view.size=1920x1080"
+          ]
+        }
       ]
     },
     {
-      "id": "filter", "label": "Screen filter", "in": "args", "group": "Mods",
+      "id": "filter",
+      "label": "Screen filter",
+      "in": "args",
+      "group": "Mods",
       "help": "How the pixels are drawn: sharp, smooth, with rounded edges (Scale4x) or like a 1996 monitor.",
       "choices": [
-        { "label": "Game's option", "args": [] },
-        { "label": "None", "args": ["--mod", "display-filter=off"] },
-        { "label": "Sharp", "args": ["--mod", "display-filter=on", "--modset", "display-filter.style=sharp"] },
-        { "label": "Smooth", "args": ["--mod", "display-filter=on", "--modset", "display-filter.style=smooth"] },
-        { "label": "Edge smoothing", "args": ["--mod", "display-filter=on", "--modset", "display-filter.style=edge"] },
-        { "label": "CRT monitor", "args": ["--mod", "display-filter=on", "--modset", "display-filter.style=crt"] }
+        {
+          "label": "Game's option",
+          "args": []
+        },
+        {
+          "label": "None",
+          "args": [
+            "--mod",
+            "display-filter=off"
+          ]
+        },
+        {
+          "label": "Sharp",
+          "args": [
+            "--mod",
+            "display-filter=on",
+            "--modset",
+            "display-filter.style=sharp"
+          ]
+        },
+        {
+          "label": "Smooth",
+          "args": [
+            "--mod",
+            "display-filter=on",
+            "--modset",
+            "display-filter.style=smooth"
+          ]
+        },
+        {
+          "label": "Edge smoothing",
+          "args": [
+            "--mod",
+            "display-filter=on",
+            "--modset",
+            "display-filter.style=edge"
+          ]
+        },
+        {
+          "label": "CRT monitor",
+          "args": [
+            "--mod",
+            "display-filter=on",
+            "--modset",
+            "display-filter.style=crt"
+          ]
+        }
       ]
     },
     {
-      "id": "intros", "label": "Intro films", "in": "args", "group": "Mods",
+      "id": "intros",
+      "label": "Intro films",
+      "in": "args",
+      "group": "Mods",
       "help": "The logos and the flight to the island when a game starts.",
       "choices": [
-        { "label": "Game's option", "args": [] },
-        { "label": "Play them", "args": ["--mod", "skip-intros=off"] },
-        { "label": "Skip the logos", "args": ["--mod", "skip-intros=on", "--modset", "skip-intros.logo=on", "--modset", "skip-intros.title=off"] },
-        { "label": "Skip all", "args": ["--mod", "skip-intros=on", "--modset", "skip-intros.logo=on", "--modset", "skip-intros.title=on"] }
+        {
+          "label": "Game's option",
+          "args": []
+        },
+        {
+          "label": "Play them",
+          "args": [
+            "--mod",
+            "skip-intros=off"
+          ]
+        },
+        {
+          "label": "Skip the logos",
+          "args": [
+            "--mod",
+            "skip-intros=on",
+            "--modset",
+            "skip-intros.logo=on",
+            "--modset",
+            "skip-intros.title=off"
+          ]
+        },
+        {
+          "label": "Skip all",
+          "args": [
+            "--mod",
+            "skip-intros=on",
+            "--modset",
+            "skip-intros.logo=on",
+            "--modset",
+            "skip-intros.title=on"
+          ]
+        }
       ]
     },
     {
-      "id": "speed", "label": "Speed buttons", "in": "args", "group": "Mods",
+      "id": "speed",
+      "label": "Speed buttons",
+      "in": "args",
+      "group": "Mods",
       "help": "Buttons for normal, 2× and 5× speed in front of the date.",
       "choices": [
-        { "label": "Game's option", "args": [] },
-        { "label": "On", "args": ["--mod", "game-speed=on"] },
-        { "label": "Off", "args": ["--mod", "game-speed=off"] }
+        {
+          "label": "Game's option",
+          "args": []
+        },
+        {
+          "label": "On",
+          "args": [
+            "--mod",
+            "game-speed=on"
+          ]
+        },
+        {
+          "label": "Off",
+          "args": [
+            "--mod",
+            "game-speed=off"
+          ]
+        }
       ]
     },
     {
-      "id": "autosave", "label": "Autosave", "in": "args", "group": "Mods",
+      "id": "autosave",
+      "label": "Autosave",
+      "in": "args",
+      "group": "Mods",
       "help": "Saves on the 1st of every month and keeps the newest five.",
       "choices": [
-        { "label": "Game's option", "args": [] },
-        { "label": "On", "args": ["--mod", "autosave=on"] },
-        { "label": "Off", "args": ["--mod", "autosave=off"] }
+        {
+          "label": "Game's option",
+          "args": []
+        },
+        {
+          "label": "On",
+          "args": [
+            "--mod",
+            "autosave=on"
+          ]
+        },
+        {
+          "label": "Off",
+          "args": [
+            "--mod",
+            "autosave=off"
+          ]
+        }
       ]
     }
   ]

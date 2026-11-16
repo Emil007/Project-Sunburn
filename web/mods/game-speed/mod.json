@@ -1,12 +1,13 @@
 {
  "id": "game-speed",
- "name": "Game speed buttons",
- "name_de": "Spieltempo-Tasten",
+ "name": "Game speed",
+ "name_de": "Spieltempo",
  "version": "1.0",
  "author": "Project Sunburn",
  "category": "Gameplay",
- "description": "Adds three buttons in front of the date: ▶ normal speed, ▶▶ twice as fast, ▶▶▶ five times as fast. Days, guests and building work all run faster, like on a faster PC.",
- "description_de": "Fügt vor dem Datum drei Tasten hinzu: ▶ normales Tempo, ▶▶ doppelt so schnell, ▶▶▶ fünfmal so schnell. Tage, Gäste und Bauarbeiten laufen schneller, wie auf einem schnelleren PC.",
+ "description": "Adds three buttons in front of the date: ▶ normal speed, ▶▶ twice as fast, ▶▶▶ five times as fast. Days, guests and building work all run faster, like on a faster PC. Keys: F5 / F6 / F7 for the three speeds, Pause to stop the clock and go on; gamepad: RB steps through the speeds.",
+ "description_de": "Fügt vor dem Datum drei Tasten hinzu: ▶ normales Tempo, ▶▶ doppelt so schnell, ▶▶▶ fünfmal so schnell. Tage, Gäste und Bauarbeiten laufen schneller, wie auf einem schnelleren PC. Tasten: F5 / F6 / F7 für die drei Tempi, Pause hält die Uhr an und lässt sie weiterlaufen; Gamepad: RB schaltet durch die Tempi.",
  "script": "script.js",
- "recommended": true
+ "recommended": true,
+ "ui": "ui.js"
 }

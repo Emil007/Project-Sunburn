@@ -1,4 +1,13 @@
-{ "id": "truecolor-video", "name": "True-colour videos", "name_de": "Videos in Echtfarben", "version": "1.0", "author": "Project Sunburn", "category": "Graphics",
-  "description": "Plays the Cinepak films in full colour instead of reducing them to the game's 256-colour palette like a 1996 display did.",
-  "description_de": "Spielt die Cinepak-Filme in voller Farbe ab, statt sie wie 1996 auf die 256-Farben-Palette zu reduzieren.",
-  "script": "script.js", "recommended": true }
+{
+ "id": "truecolor-video",
+ "name": "True-colour videos",
+ "name_de": "Videos in Echtfarben",
+ "version": "1.0",
+ "author": "Project Sunburn",
+ "category": "Graphics",
+ "description": "Plays the Cinepak films in full colour instead of reducing them to the game's 256-colour palette like a 1996 display did.",
+ "description_de": "Spielt die Cinepak-Filme in voller Farbe ab, statt sie wie 1996 auf die 256-Farben-Palette zu reduzieren.",
+ "script": "script.js",
+ "recommended": true,
+ "setting": true
+}

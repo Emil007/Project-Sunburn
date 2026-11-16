@@ -79,8 +79,13 @@ function migrate() {
 }
 
 export function applyPreset(p: 'original' | 'recommended') {
+  // the presets are about the mods; settings-type mods (filter, film colours, fixes) keep their state,
+  // except on the very first start, when the recommended ones are switched on
+  const first = !modState.initialized; const keep: Record<string, boolean> = {};
+  for (const [id, e] of catalogue) if (e.manifest.setting && id in modState.enabled) keep[id] = modState.enabled[id];
   modState.enabled = {};
-  if (p === 'recommended') for (const [id, e] of catalogue) if (e.manifest.recommended && !e.manifest.hidden) modState.enabled[id] = true;
+  for (const [id, e] of catalogue) if (e.manifest.recommended && !e.manifest.hidden && (p === 'recommended' || (e.manifest.setting && first))) modState.enabled[id] = true;
+  Object.assign(modState.enabled, keep);
   saveModState();
 }
 

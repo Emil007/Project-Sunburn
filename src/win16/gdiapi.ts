@@ -199,6 +199,7 @@ export function installGdiApi(w: Win16) {
   });
   G(104, 'RectVisible', ['word', 'ptr'], 'w', ([h, p]) => {
     const dc = D(h); if (!dc) return 0; const L = m.lin(p); const s = (o: number) => (mem.r16(L + o) << 16) >> 16;
+    if (gdi.skipDraw) return 0;   // fast-forward: the game skips drawing what isn't visible
     const r = R(gdi.lx(dc, s(0)), gdi.ly(dc, s(2)), gdi.lx(dc, s(4)), gdi.ly(dc, s(6))); return gdi.clipRects(dc, r).length ? 1 : 0;
   });
   G(128, 'MulDiv', ['s_word', 's_word', 's_word'], 'w', ([a, b, c]) => c === 0 ? 0xffff : Math.round(a * b / c) & 0xffff);

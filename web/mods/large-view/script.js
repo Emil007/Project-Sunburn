@@ -16,13 +16,21 @@
 // open around the map instead of on top of it, and every window - the map included - can be dragged
 // by its title bar (the original game already supports dragging its borderless windows).
 const parseSize = (v) => String(v).split('x').map(Number);
-let [DW, DH] = parseSize(api.settings.size || '1280x800');
-let [SW, SH] = [DW, DH];
-const desk = String(api.settings.desktop || 'off');
-if (desk === 'auto') [SW, SH] = [api.host.w, api.host.h];
-else if (desk !== 'off') [SW, SH] = parseSize(desk);
-SW = Math.max(SW, 640); SH = Math.max(SH, 480);
-DW = Math.min(DW, SW); DH = Math.min(DH, SH);
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(v) || lo));
+const host = { w: clamp(api.host && api.host.w, 640, 3840), h: clamp(api.host && api.host.h, 480, 2160) };
+const sizeSetting = String(api.settings.size || 'auto');
+const desk = String(api.settings.desktop || 'auto');
+// the desktop (screen of the game): the player's screen/window, a fixed size, or just the map window
+let [SW, SH] = desk === 'auto' ? [host.w, host.h] : desk !== 'off' ? parseSize(desk) : [0, 0];
+// the map window: a fixed size, or automatic - the whole screen without a desktop, else about two
+// thirds of its width, so the finance and map windows (440 pixels wide) fit beside it
+let [DW, DH] = sizeSetting !== 'auto' ? parseSize(sizeSetting)
+  : desk === 'off' ? [host.w, host.h]
+  : [SW - Math.max(440, SW / 3), SH - 40];
+if (desk === 'off') [SW, SH] = [DW, DH];
+SW = clamp(SW, 640, 3840); SH = clamp(SH, 480, 2160);
+// the game's draw tables hold at most 63 tile columns and 63 half-rows: 2032 x 1064 pixels of window
+DW = clamp(Math.floor(Math.min(DW, 2032) / 16) * 16, 640, SW); DH = clamp(Math.floor(Math.min(DH, 1064) / 8) * 8, 480, SH);
 api.setScreenSize(SW, SH);
 const MX = 0, MY = 0; // the game centres its main window itself
 const VW = DW - 16, VH = DH - 75;           // map view (orig. 624 x 405)

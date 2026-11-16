@@ -1,0 +1,4 @@
+{ "id": "rivals", "name": "Rivals overview", "name_de": "Konkurrenz-Übersicht", "version": "1.0", "author": "Project Sunburn", "category": "Interface",
+  "description": "F8 shows all players with their colour, money and a chart of how their money developed since you started playing this session. The game itself only shows your own figures.",
+  "description_de": "F8 zeigt alle Spieler mit Farbe, Geld und einer Kurve, wie sich ihr Geld seit Beginn dieser Spielsitzung entwickelt hat. Das Spiel selbst zeigt nur deine eigenen Zahlen.",
+  "script": "script.js", "ui": "ui.js", "recommended": true }

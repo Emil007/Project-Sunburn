@@ -17,6 +17,8 @@ export interface ModManifest {
   ui?: string;                           // runs in the UI thread (input / overlay helpers)
   /** built-in part of the game (e.g. the cheat menu): always on and not listed with the mods */
   hidden?: boolean;
+  /** switched in the launcher's Settings (screen filter, film colours, bug fixes), not listed with the mods */
+  setting?: boolean;
   shader?: string;                       // GLSL screen filter: vec4 filter(sampler2D tex, vec2 uv, vec2 texSize, vec2 outSize); {key} picks the file by a setting
   soundfont?: string;                    // .sf2/.sf3 used for MIDI music
   priority?: number;                     // load order (higher = later = wins)

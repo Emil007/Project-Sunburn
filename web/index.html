@@ -73,6 +73,7 @@
   <details class="card" id="settingsCard">
     <summary data-i18n="settings">Settings</summary>
     <div class="grid">
+      <h4 class="wide" data-i18n="secPicture">Picture</h4>
       <div class="field"><label data-i18n="scaling">Scaling</label>
         <select id="optScale">
           <option value="pixel" data-i18n="scalePixel">Sharp – never shrink (recommended)</option>
@@ -80,17 +81,27 @@
         </select></div>
       <div class="field"><label data-i18n="aspect">Aspect</label>
         <select id="optAspect"><option value="4:3" data-i18n="keepAspect">Keep</option><option value="stretch" data-i18n="stretch">Fill window</option></select></div>
+      <div class="field"><label data-i18n="filter">Screen filter</label>
+        <select id="optFilter"><option value="off" data-i18n="filterOff">None (plain pixels, like 1996)</option><option value="sharp" data-i18n="filterSharp">Sharp (recommended)</option><option value="smooth" data-i18n="filterSmooth">Smooth</option><option value="edge" data-i18n="filterEdge">Edge smoothing (Scale4x)</option><option value="crt" data-i18n="filterCrt">CRT monitor</option></select></div>
+      <div class="field" id="crtField"><label><span data-i18n="crtStrength">Scanline strength</span> <output id="crtOut"></output></label><input type="range" id="optCrt" min="0" max="100"></div>
+      <h4 class="wide" data-i18n="secFilms">Films</h4>
       <div class="field"><label data-i18n="video">Video quality</label>
         <select id="optVideo"><option value="hi" data-i18n="high">High</option><option value="lo" data-i18n="low">Low</option></select></div>
+      <div class="field"><label data-i18n="filmColours">Colours</label>
+        <select id="optFilmColours"><option value="true" data-i18n="filmTrue">True colour (recommended)</option><option value="256" data-i18n="film256">256 colours, like 1996</option></select></div>
+      <h4 class="wide" data-i18n="secSound">Sound</h4>
       <div class="field"><label><span data-i18n="music">Music</span> <output id="musicOut"></output></label><input type="range" id="optMusic" min="0" max="100"></div>
       <div class="field"><label><span data-i18n="sfx">Sound effects &amp; speech</span> <output id="sfxOut"></output></label><input type="range" id="optSfx" min="0" max="100"></div>
       <div class="field"><label data-i18n="musicSource">Music source</label>
         <select id="optMusicSrc"><option value="sf2" data-i18n="msSf2">MIDI · GeneralUser GS SoundFont</option><option value="none" data-i18n="msOff">Off</option></select></div>
+      <h4 class="wide" data-i18n="secGame">Game</h4>
+      <div class="field wide"><label class="chk"><input type="checkbox" id="optFixes"> <span data-i18n="fixes">Fix mistakes of the original release</span></label>
+        <small class="muted" data-i18n="fixesHelp">For example the English CD's music track that ends in "MCI error 275". Turn off to play the release exactly as it was.</small></div>
       <div class="field wide" id="proxyField"><label for="optProxy" data-i18n="dlProxy">Download proxy (optional)</label>
         <input type="url" id="optProxy" placeholder="https://my-proxy.example.workers.dev/?url=" spellcheck="false">
         <small class="muted" data-i18n="dlProxyHelp">Only needed to download discs from sites that block web pages (archive.org works without). See tools/cors-proxy in the repository.</small></div>
     </div>
-    <p class="muted small" data-i18n="keysHelp">In game: F11 toggles fullscreen, F10 opens this menu.</p>
+    <p class="muted small" data-i18n="keysHelp">In game: F11 fullscreen, F10 this menu, F9 cheats, F8 rivals overview, F5 / F6 / F7 game speed, Pause stops the clock.</p>
   </details>
 
   <footer class="muted small">

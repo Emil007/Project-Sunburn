@@ -6,7 +6,7 @@ import { zipSync, unzipSync } from 'fflate';
 import { WorkletSynthesizer, Sequencer } from 'spessasynth_lib';
 
 import { hiLog, saveLog, logText } from './log';
-import { loadCatalogue, buildActive, fileText, fileData, setEnabled, setSetting, catalogue } from './mods';
+import { loadCatalogue, buildActive, fileText, fileData, setEnabled, setSetting, catalogue, modState } from './mods';
 import { renderMods } from './modsui';
 import type { ActiveMod } from '../mods/types';
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -190,6 +190,37 @@ async function importFiles(fl: File[]) {
 // Saves are the game's own files (HOLIDAY\MAPS\*.MAP, ...), the same format in the English and the
 // German release and in the original game. A zip moves them between versions, devices, the web and the
 // desktop app, or to a real Windows 3.1 install.
+// the saved islands (MAPS\*.MAP): date, player, rename, delete, download one
+async function manageSaves(lang: Lang) {
+  const files = (await loadSaves(lang)).filter((f) => /(^|\\)MAPS\\[^\\]+\.MAP$/i.test(f.path));
+  const info = new Map((await loadSaveInfo(lang)).map((f) => [f.path, f]));
+  const box = document.createElement('div'); box.className = 'savelist';
+  const player = (d: Uint8Array) => { const n = d[0x46]; if (!n || n > 30) return ''; let s = ''; for (let i = 0; i < n; i++) { const c = d[0x47 + i]; if (c < 32) return ''; s += String.fromCharCode(c); } return s; };
+  const close = () => { $('modal').hidden = true; };
+  if (!files.length) box.textContent = t('savesNone');
+  files.sort((a, b) => (info.get(b.path)?.mtime || 0) - (info.get(a.path)?.mtime || 0));
+  for (const f of files) {
+    const name = f.path.replace(/^.*\\/, '').replace(/\.MAP$/i, ''); const folder = f.path.slice(0, f.path.length - name.length - 4);
+    const when = info.get(f.path)?.mtime ? new Date(info.get(f.path)!.mtime).toLocaleString(settings.ui === 'de' ? 'de-DE' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+    const row = document.createElement('div'); row.className = 'saverow';
+    const meta = document.createElement('div'); meta.className = 'meta';
+    meta.innerHTML = `<b></b><span></span>`; meta.querySelector('b')!.textContent = name; meta.querySelector('span')!.textContent = [player(f.data), when, `${Math.round(f.data.length / 1024)} KB`].filter(Boolean).join(' · ');
+    const btn = (label: string, fn: () => void, cls = 'btn ghost small') => { const b = document.createElement('button'); b.className = cls; b.textContent = label; b.onclick = fn; return b; };
+    row.append(meta,
+      btn(t('savesDownload'), () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([f.data as BlobPart])); a.download = name + '.MAP'; document.body.append(a); a.click(); a.remove(); }),
+      btn(t('savesRename'), async () => {
+        const nn = (prompt(t('savesRenameQ'), name) || '').toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 8);
+        if (!nn || nn === name.toUpperCase()) return;
+        if (files.some((x) => x.path.toUpperCase() === `${folder}${nn}.MAP`.toUpperCase()) && !confirm(t('savesReplaceQ'))) return;
+        await persistSave(lang, `${folder}${nn}.MAP`, f.data); await persistSave(lang, f.path, null); close(); void manageSaves(lang);
+      }),
+      btn(t('remove'), async () => { if (!confirm(t('savesDeleteQ').replace('{n}', name))) return; await persistSave(lang, f.path, null); row.remove(); }, 'btn danger small'));
+    box.appendChild(row);
+  }
+  const p = showModal(t('savesTitle'), '', 0);
+  $('modalText').appendChild(box);
+  await p;
+}
 async function exportSaves(lang: Lang) {
   const files = await loadSaves(lang);
   if (!files.length) { await showModal(t('savesTitle'), t('savesNone'), 0); return; }
@@ -270,7 +301,9 @@ function renderLibrary() {
     const inp = document.createElement('input'); inp.type = 'file'; inp.multiple = true; inp.accept = '.zip,.map,.MAP'; inp.hidden = true;
     inp.onchange = () => { if (inp.files?.length) void importSaves(lang, [...inp.files]); inp.value = ''; };
     im.append(inp, document.createTextNode(t('savesImport')));
-    el.append(ex, im);
+    const mg = document.createElement('button'); mg.className = 'btn ghost small'; mg.textContent = t('savesManage');
+    mg.onclick = () => void manageSaves(lang);
+    el.append(mg, ex, im);
     const rm = document.createElement('button'); rm.className = 'btn danger'; rm.textContent = t('remove');
     rm.onclick = async () => { if (confirm(t('removeConfirm'))) { await removeDisc(lang); renderLibrary(); } };
     el.appendChild(rm); list.appendChild(el);
@@ -808,6 +841,20 @@ function bindSettings() {
   px.onchange = () => { settings.dlProxy = px.value.trim(); setDownloadProxy(settings.dlProxy); saveSettings(); };
   $('proxyField').hidden = /Electron/.test(navigator.userAgent);   // the desktop app needs no proxy
 }
+// settings that are carried out by built-in mods (manifest "setting": true)
+function bindModSettings() {
+  const on = (id: string) => !!modState.enabled[id];
+  const f = $<HTMLSelectElement>('optFilter'), crt = $<HTMLInputElement>('optCrt');
+  const style = () => String(modState.settings['display-filter']?.style || 'sharp');
+  f.value = on('display-filter') ? style() : 'off';
+  crt.value = String(modState.settings['display-filter']?.strength ?? 45); $('crtOut').textContent = crt.value + '%';
+  const showCrt = () => { $('crtField').hidden = f.value !== 'crt'; };
+  f.onchange = () => { if (f.value === 'off') setEnabled('display-filter', false); else { setEnabled('display-filter', true); setSetting('display-filter', 'style', f.value); } showCrt(); };
+  crt.oninput = () => { setSetting('display-filter', 'strength', +crt.value); $('crtOut').textContent = crt.value + '%'; };
+  showCrt();
+  const fc = $<HTMLSelectElement>('optFilmColours'); fc.value = on('truecolor-video') ? 'true' : '256'; fc.onchange = () => setEnabled('truecolor-video', fc.value === 'true');
+  const fx = $<HTMLInputElement>('optFixes'); fx.checked = on('bugfixes'); fx.onchange = () => setEnabled('bugfixes', fx.checked);
+}
 async function main() {
   applyI18n(); bindSettings();
   $('uiLang').onclick = (e) => { e.preventDefault(); settings.ui = settings.ui === 'de' ? 'en' : 'de'; saveSettings(); applyI18n(); renderLibrary(); renderMods(); };
@@ -824,7 +871,7 @@ async function main() {
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEv = e; $('installWrap').hidden = false; });
   $('installApp').onclick = async (e) => { e.preventDefault(); if (!installEv) return; installEv.prompt(); await installEv.userChoice; installEv = null; $('installWrap').hidden = true; };
   await loadLibrary(); renderLibrary();
-  await loadCatalogue(); renderMods({ t, ui: () => settings.ui as 'en' | 'de', lang: () => (settings.lang || 'en') as string, modal: showModal });
+  await loadCatalogue(); bindModSettings(); renderMods({ t, ui: () => settings.ui as 'en' | 'de', lang: () => (settings.lang || 'en') as string, modal: showModal });
   (window as any).__hi = { settings, library, importFiles, startGame, logText };
   await applyLaunchOptions();
 }
