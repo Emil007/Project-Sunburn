@@ -48,7 +48,7 @@ async function loadLibrary() {
       for await (const [name, h] of (dir as any).entries()) {
         if (h.kind !== 'file') continue;
         if (name === 'label.txt') { label = await (await h.getFile()).text(); continue; }
-        const f: File = await h.getFile(); files.push({ name, file: f }); size += f.size;
+        const f: File = await h.getFile(); files.push({ name: name.includes('%2F') ? decodeURIComponent(name) : name, file: f }); size += f.size;
       }
       if (files.length) library.set(lang, { lang, label, files, size });
     }
@@ -63,11 +63,12 @@ async function storeDisc(set: DiscSet, progress: (p: number) => void) {
   const stored: { name: string; file: File }[] = [];
   for (const f of set.files) {
     const src = (f.file as any).__handle;   // downloaded into OPFS already: move instead of copying
+    const oname = f.name.includes('/') ? encodeURIComponent(f.name) : f.name; // files of a game folder keep their path
     if (src?.move) {
-      try { await src.move(dir, f.name); stored.push({ name: f.name, file: await (await dir.getFileHandle(f.name)).getFile() }); done += f.file.size; progress(done / total); continue; }
+      try { await src.move(dir, oname); stored.push({ name: f.name, file: await (await dir.getFileHandle(oname)).getFile() }); done += f.file.size; progress(done / total); continue; }
       catch { /* copy below */ }
     }
-    const h = await dir.getFileHandle(f.name, { create: true });
+    const h = await dir.getFileHandle(oname, { create: true });
     const ws = await (h as any).createWritable();
     const reader = f.file.stream().getReader();
     for (;;) { const { done: d, value } = await reader.read(); if (d) break; await ws.write(value); done += value.length; progress(done / total); }
@@ -146,11 +147,20 @@ function probe(files: { name: string; file: File }[]): Promise<{ ok: boolean; la
     w.postMessage({ t: 'probe', files });
   });
 }
+// the path of a file inside a picked or dropped folder
+const relPath = (f: File) => ((f as any).relPath || f.webkitRelativePath || f.name) as string;
 function groupFiles(fl: File[]): { name: string; file: File }[][] {
   // group into disc sets by base name
-  const files = fl.map(f => ({ name: f.name, file: f }));
+  const files = fl.map(f => ({ name: relPath(f), file: f }));
   const sets: { name: string; file: File }[][] = [];
   const used = new Set<string>();
+  // an installed game folder (the one holding HOLIDAY.EXE), or a .zip of one
+  const exe = files.filter(f => /(^|\/)holiday\.exe$/i.test(f.name)).sort((a, b) => a.name.length - b.name.length)[0];
+  if (exe) {
+    const base = exe.name.slice(0, -'holiday.exe'.length).toLowerCase();
+    const s = files.filter(f => f.name.toLowerCase().startsWith(base)); s.forEach(f => used.add(f.name)); sets.push(s);
+  }
+  for (const f of files) if (!used.has(f.name) && /\.zip$/i.test(f.name)) { sets.push([f]); used.add(f.name); }
   for (const f of files) {
     const n = f.name.toLowerCase();
     if (n.endsWith('.mds')) { const base = n.slice(0, -4); const mdf = files.find(x => x.name.toLowerCase() === base + '.mdf'); const s = [f]; used.add(f.name); if (mdf) { s.push(mdf); used.add(mdf.name); } sets.push(s); }
@@ -169,7 +179,7 @@ async function importFiles(fl: File[]) {
   const sets = groupFiles(fl);
   if (!sets.length) { st.className = 'status err'; st.textContent = t('noImage'); return; }
   for (const s of sets) {
-    st.textContent = t('checking') + ' ' + s.map(x => x.name).join(' + ');
+    st.textContent = t('checking') + ' ' + discName(s);
     const r = await probe(s);
     if (!r.ok || !r.lang) { st.className = 'status err'; st.textContent = `${s[0].name}: ${r.error || t('notHI')}`; continue; }
     st.innerHTML = `${t('importing')} <b>${r.lang === 'de' ? 'Deutsch' : 'English'}</b>…<div class="progress"><i></i></div>`;
@@ -289,12 +299,17 @@ async function importUrl(url: string) {
   }
 }
 
+// a game folder is hundreds of files: name it by its folder
+function discName(s: { name: string }[]) {
+  if (s.length > 4) { const top = s[0].name.split('/')[0]; return `${top}/ (${s.length} ${t('folderFiles')})`; }
+  return s.map(x => x.name).join(' + ');
+}
 function renderLibrary() {
   const list = $('discList'); list.innerHTML = '';
   for (const lang of ['en', 'de'] as Lang[]) {
     const d = library.get(lang); if (!d) continue;
     const el = document.createElement('div'); el.className = 'disc';
-    el.innerHTML = `<div class="flag">${lang === 'de' ? '🇩🇪' : '🇬🇧'}</div><div class="meta"><b>${lang === 'de' ? 'Holiday Island (Deutsch)' : 'Holiday Island (English)'}</b><span>${d.files.map(f => f.name).join(', ')} · ${(d.size / 1048576).toFixed(0)} MB</span></div>`;
+    el.innerHTML = `<div class="flag">${lang === 'de' ? '🇩🇪' : '🇬🇧'}</div><div class="meta"><b>${lang === 'de' ? 'Holiday Island (Deutsch)' : 'Holiday Island (English)'}</b><span>${discName(d.files).replace(/ \+ /g, ', ')} · ${(d.size / 1048576).toFixed(0)} MB</span>${d.label.startsWith('folder') ? `<span>${t('folderSrc')}${d.label.includes('nofilms') || d.label.includes('nospeech') ? ' ' + t(d.label.includes('nofilms') && d.label.includes('nospeech') ? 'ripNoBoth' : d.label.includes('nofilms') ? 'ripNoFilms' : 'ripNoSpeech') : ''}</span>` : ''}</div>`;
     const ex = document.createElement('button'); ex.className = 'btn ghost small'; ex.textContent = t('savesExport'); ex.title = t('savesHelp');
     ex.onclick = () => void exportSaves(lang);
     const im = document.createElement('label'); im.className = 'btn ghost small'; im.title = t('savesHelp');
@@ -855,6 +870,20 @@ function bindModSettings() {
   const fc = $<HTMLSelectElement>('optFilmColours'); fc.value = on('truecolor-video') ? 'true' : '256'; fc.onchange = () => setEnabled('truecolor-video', fc.value === 'true');
   const fx = $<HTMLInputElement>('optFixes'); fx.checked = on('bugfixes'); fx.onchange = () => setEnabled('bugfixes', fx.checked);
 }
+// files of a drop; a dropped folder is walked (an installed game folder)
+async function droppedFiles(dt: DataTransfer | null): Promise<File[]> {
+  if (!dt) return [];
+  const entries = [...dt.items].map((i) => (i as any).webkitGetAsEntry?.()).filter(Boolean);
+  if (!entries.some((e: any) => e.isDirectory)) return [...dt.files];
+  const out: File[] = [];
+  const walk = async (e: any, pre: string): Promise<void> => {
+    if (e.isFile) { const f: File = await new Promise((res, rej) => e.file(res, rej)); (f as any).relPath = pre + e.name; out.push(f); return; }
+    const r = e.createReader(); let batch: any[];
+    do { batch = await new Promise((res, rej) => r.readEntries(res, rej)); for (const c of batch) await walk(c, pre + e.name + '/'); } while (batch.length);
+  };
+  for (const e of entries) await walk(e, '');
+  return out;
+}
 async function main() {
   applyI18n(); bindSettings();
   $('uiLang').onclick = (e) => { e.preventDefault(); settings.ui = settings.ui === 'de' ? 'en' : 'de'; saveSettings(); applyI18n(); renderLibrary(); renderMods(); };
@@ -863,7 +892,8 @@ async function main() {
   const dz = $('dropzone');
   dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('over'); });
   dz.addEventListener('dragleave', () => dz.classList.remove('over'));
-  dz.addEventListener('drop', (e) => { e.preventDefault(); dz.classList.remove('over'); const fl = [...(e.dataTransfer?.files || [])]; if (fl.length) void importFiles(fl); });
+  dz.addEventListener('drop', (e) => { e.preventDefault(); dz.classList.remove('over'); void droppedFiles(e.dataTransfer).then((fl) => { if (fl.length) void importFiles(fl); }); });
+  const dirPick = $<HTMLInputElement>('dirPick'); dirPick.onchange = () => { if (dirPick.files?.length) void importFiles([...dirPick.files]); dirPick.value = ''; };
   $('playBtn').onclick = () => void startGame();
   $('saveLog').onclick = (e) => { e.preventDefault(); saveLog(); };
   // web app install (Chrome/Edge/Android); Safari: "Add to Home Screen" from the share menu
@@ -897,7 +927,7 @@ async function applyLaunchOptions() {
   if (!lang) {
     const st = $('importStatus'); st.hidden = false; st.className = 'status'; st.textContent = t('checking') + ' ' + o.disc.files.map((f) => f.name).join(' + ');
     const fl: File[] = [];
-    for (const f of o.disc.files) fl.push(new File([await (await fetch(`/__launchfile?name=${encodeURIComponent(f.name)}`)).blob()], f.name));
+    for (const f of o.disc.files) { const file = new File([await (await fetch(`/__launchfile?name=${encodeURIComponent(f.name)}`)).blob()], f.name.split('/').pop()!); (file as any).relPath = f.name; fl.push(file); }
     const before = new Set(library.keys());
     await importFiles(fl);
     lang = [...library.keys()].find((k) => !before.has(k)) || ([...library.values()].find((d) => sig(d.files.map((f) => ({ name: f.name, size: f.file.size }))) === want)?.lang);

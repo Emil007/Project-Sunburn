@@ -152,3 +152,38 @@ export function openCUE(cue: string, open: (name: string) => ByteSource | null):
 }
 
 export function bytesSource(b: Uint8Array): ByteSource { return { size: b.length, read: (o, l) => b.subarray(o, Math.min(b.length, o + l)) }; }
+
+// An installed game folder (or a .zip of one) instead of a CD image: e.g. the 6 MB "RIP" release, which
+// is a copy of an English installation with the films replaced by a tiny placeholder and empty speech
+// files. Paths are relative to the folder that holds HOLIDAY.EXE.
+export class FolderDisc extends Disc {
+  private blobs = new Map<string, () => Uint8Array>();
+  constructor() {
+    const t: Track = { num: 1, audio: false, startSector: 0, sectors: 0, fileOffset: 0, sectorSize: 2048, dataOffset: 0, source: { size: 0, read: () => new Uint8Array(0) } };
+    super(t); this.tracks = [t]; this.volumeLabel = 'HOLIDAY';
+  }
+  add(path: string, size: number, read: () => Uint8Array) {
+    const p = path.toUpperCase().replace(/\//g, '\\').replace(/^\\+/, '');
+    this.files.set(p, { lba: 0, size }); this.blobs.set(p, read);
+    const parts = p.split('\\'); for (let i = 1; i < parts.length; i++) this.dirs.add(parts.slice(0, i).join('\\'));
+  }
+  override readFile(path: string): Uint8Array | null {
+    const r = this.blobs.get(path.toUpperCase().replace(/\//g, '\\').replace(/^\\+/, ''));
+    return r ? r() : null;
+  }
+}
+
+/** Build a FolderDisc from a file list. The game folder is the one holding HOLIDAY.EXE, at any depth
+ *  (a zip usually wraps it in a folder of its own). Returns null when there is no HOLIDAY.EXE. */
+export function openFolder(entries: { path: string; size: number; read: () => Uint8Array }[]): FolderDisc | null {
+  const norm = (p: string) => p.replace(/\\/g, '/').replace(/^\/+/, '');
+  const exe = entries.map(e => norm(e.path)).filter(p => /(^|\/)holiday\.exe$/i.test(p)).sort((a, b) => a.length - b.length)[0];
+  if (exe === undefined) return null;
+  const base = exe.slice(0, exe.length - 'holiday.exe'.length).toLowerCase();
+  const d = new FolderDisc();
+  for (const e of entries) {
+    const p = norm(e.path); if (!p.toLowerCase().startsWith(base) || p.endsWith('/')) continue;
+    d.add(p.slice(base.length), e.size, e.read);
+  }
+  return d;
+}

@@ -165,8 +165,11 @@ async function save(res: Response, url: string, dir: FileSystemDirectoryHandle |
   }
   // zip: unpack on the fly, keep only disc image files
   const out: Promise<File>[] = []; let chain: Promise<unknown> = Promise.resolve(); let err: any = null;
+  // a zip of an installed game folder (the small "RIP" release) is kept whole: the game reads it as is
+  let sawExe = false; const raw: Uint8Array[] = []; let rawOk = true;
   const uz = new Unzip((f) => {
     const base = f.name.split('/').pop() || '';
+    if (/^holiday\.exe$/i.test(base)) sawExe = true;
     if (!DISC_EXT.test(base) || f.name.includes('__MACOSX')) return;
     let s: Sink | null = null; let resolveF: (x: File) => void; out.push(new Promise((r) => (resolveF = r)));
     chain = chain.then(async () => { s = await sink(dir, base); });
@@ -181,10 +184,12 @@ async function save(res: Response, url: string, dir: FileSystemDirectoryHandle |
     const { done, value } = await reader.read();
     if (done) { uz.push(new Uint8Array(0), true); break; }
     got += value.length; tick();
+    if (rawOk) { raw.push(value); if (got > 200 * 1048576) { rawOk = false; raw.length = 0; } }
     uz.push(value); await chain; if (err) throw new DownloadError('zip: ' + (err.message || err));
   }
   await chain; if (err) throw new DownloadError('zip: ' + (err.message || err));
   const files = await Promise.all(out);
+  if (!files.length && sawExe && rawOk) return [new File(raw as BlobPart[], name)];
   if (!files.length) throw new DownloadError('noImageInZip');
   return files;
 }

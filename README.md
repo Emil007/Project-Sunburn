@@ -35,7 +35,7 @@ It also reimplements the Windows 3.1 services the game uses, on top of modern te
 | WaveMix DLL sound mixer                | WebAudio mixer                                                   |
 | MIDI on a 1996 sound card (calypso!)   | **GeneralUser GS** SoundFont synth (spessasynth)                 |
 | Video for Windows (Cinepak/MS‑ADPCM)   | Built‑in Cinepak and ADPCM decoders                              |
-| CD‑ROM drive + installer               | Reads .iso / .bin+.cue / .mdf+.mds images directly; the install is rebuilt automatically |
+| CD‑ROM drive + installer               | Reads .iso / .bin+.cue / .mdf+.mds images (or an installed game folder) directly; the install is rebuilt automatically |
 
 Both the **English** and the **German** releases are supported. The game language is whatever
 the disc you add is, and you can keep both in the library and switch between them.
@@ -44,6 +44,11 @@ the disc you add is, and you can keep both in the library and switch between the
 
 You need the original **Holiday Island CD** (English or German) as a disc image: `.iso`,
 `.bin`+`.cue` or `.mdf`+`.mds`. The port contains no game data.
+
+An **installed game folder** (the one with `HOLIDAY.EXE`) works too: pick it with *Choose game
+folder…*, drop the folder, or drop a `.zip` of it. That includes the small English **RIP** release
+(about 6 MB), which has no films and empty speech files: the films are skipped and the game stays
+silent where people talk; everything else, music and sound effects included, is complete.
 
 Add it in the launcher by dropping the files, or paste a **download link** – a download page, an
 archive.org item or a direct link. The launcher finds the disc image behind the link, unpacks `.zip`
@@ -125,7 +130,8 @@ release: **Ctrl + Shift + Alt + N / M** make the game clock faster or slower.
 
 ## RecompLauncher
 [RecompLauncher](https://github.com/elripalda/RecompLauncher) can install, update and start Project
-Sunburn (Windows and Linux): every release carries a `recomplauncher.json`. Drop in your disc image, and
+Sunburn (Windows and Linux): every release carries a `recomplauncher.json`. Drop in your disc image (or
+an installed game folder, such as the unpacked RIP release), and
 the launcher checks it, shows the settings below on the game's page and starts the game straight away.
 Saves go to `Documents/Project Sunburn/Saves`, so the launcher's backups and cloud saves include them.
 
@@ -137,7 +143,7 @@ Known good disc images (shown as verified):
 | English release, `.mdf` (with its `.mds`) | 414,510,048 | `130c7f4b` | `6ab6ea37183f0d755fb4a520aad7956b` |
 
 The desktop app takes the same options on the command line (for shortcuts and other front-ends):
-`--disc <image>` (play it; added to the library once), `--launcher` (show the launcher instead),
+`--disc <image or game folder>` (play it; added to the library once), `--launcher` (show the launcher instead),
 `--fullscreen` / `--windowed`, `--set scale=fit` (also `aspect`, `video`, `music`, `sfx`, `musicSrc`, `ui`),
 `--mod large-view=on`, `--modset display-filter.style=crt`. A disc image dropped on the program starts it.
 

@@ -22,11 +22,13 @@ const sizeSetting = String(api.settings.size || 'auto');
 const desk = String(api.settings.desktop || 'auto');
 // the desktop (screen of the game): the player's screen/window, a fixed size, or just the map window
 let [SW, SH] = desk === 'auto' ? [host.w, host.h] : desk !== 'off' ? parseSize(desk) : [0, 0];
-// the map window: a fixed size, or automatic - the whole screen without a desktop, else about two
-// thirds of its width, so the finance and map windows (440 pixels wide) fit beside it
+// the map window: a fixed size, or automatic - the whole screen without a desktop, else as wide as
+// leaves a 440-pixel column on each side, where the game opens its windows (finance, overview map ...);
+// on narrow screens two thirds of the width
+const autoW = SW - 880 >= 800 ? SW - 880 : (SW * 2) / 3;
 let [DW, DH] = sizeSetting !== 'auto' ? parseSize(sizeSetting)
   : desk === 'off' ? [host.w, host.h]
-  : [SW - Math.max(440, SW / 3), SH - 40];
+  : [autoW, Math.min(SH - 40, autoW * 0.8)];
 if (desk === 'off') [SW, SH] = [DW, DH];
 SW = clamp(SW, 640, 3840); SH = clamp(SH, 480, 2160);
 // the game's draw tables hold at most 63 tile columns and 63 half-rows: 2032 x 1064 pixels of window

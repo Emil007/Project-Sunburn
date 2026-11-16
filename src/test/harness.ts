@@ -3,7 +3,8 @@ import * as path from 'path';
 import * as zlib from 'zlib';
 import { Win16 } from '../win16/win16';
 import { MemFS } from '../win16/vfs';
-import { openISO, openMDS, openCUE, Disc, ByteSource } from '../assets/disc';
+import { openISO, openMDS, openCUE, openFolder, Disc, ByteSource } from '../assets/disc';
+import { unzipSync } from 'fflate';
 import { buildInstall, DiscFS } from '../assets/install';
 import { ModRuntime } from '../mods/runtime';
 import type { ActiveMod } from '../mods/types';
@@ -75,6 +76,8 @@ if (opt('disc')) {
   let disc: Disc;
   if (dp.toLowerCase().endsWith('.mds')) disc = openMDS(new Uint8Array(fs.readFileSync(dp)), fileSrc(dp.replace(/\.mds$/i, '.mdf')));
   else if (dp.toLowerCase().endsWith('.cue')) disc = openCUE(fs.readFileSync(dp, 'utf8'), (n) => { const f = path.join(path.dirname(dp), n.replace(/^.*[\\/]/, '')); return fs.existsSync(f) ? fileSrc(f) : null; });
+  else if (dp.toLowerCase().endsWith('.zip')) { const z = unzipSync(new Uint8Array(fs.readFileSync(dp))); disc = openFolder(Object.entries(z).map(([p, d]) => ({ path: p, size: d.length, read: () => d })))!; }
+  else if (fs.statSync(dp).isDirectory()) { const ents: { path: string; size: number; read: () => Uint8Array }[] = []; const walk = (d: string, pre: string) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const f = path.join(d, e.name); if (e.isDirectory()) walk(f, pre + e.name + '/'); else ents.push({ path: pre + e.name, size: fs.statSync(f).size, read: () => new Uint8Array(fs.readFileSync(f)) }); } }; walk(dp, ''); disc = openFolder(ents)!; }
   else disc = openISO(fileSrc(dp));
   const t0 = Date.now();
   const inst = buildInstall(disc);
@@ -82,6 +85,7 @@ if (opt('disc')) {
   C = inst.C; lang = inst.lang; Dfs = new DiscFS(disc);
   if (opt('lsD')) { for (const k of [...disc.files.keys()].filter((k: string) => k.includes(opt('lsD')))) console.log('D:', k); process.exit(0); }
   if (opt('lsC')) { for (const k of [...inst.C.files.keys()].filter((k) => k.includes(opt('lsC')))) console.log('C:', k); process.exit(0); }
+  if (opt('catC')) { const d = inst.C.read(opt('catC')); fs.writeFileSync('/tmp/catC.bin', d!); console.log('wrote /tmp/catC.bin', d!.length); process.exit(0); }
   if (opt('cat')) { const d = (Dfs as any).read(opt('cat')); if (!d) { console.log('not found'); process.exit(1); } fs.writeFileSync('/tmp/cat.bin', d); console.log('wrote /tmp/cat.bin', d.length); process.exit(0); }
 } else {
   console.error('usage: harness --disc <image.iso|image.mds|image.cue> [--ms N] [--script input.json] [--mods id[=json],...] [--out dir]');

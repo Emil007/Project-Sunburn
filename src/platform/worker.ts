@@ -1,8 +1,9 @@
 // Emulator worker: runs the Win16 machine synchronously, talks to UI via SharedArrayBuffers.
 import { Win16 } from '../win16/win16';
 import type { Platform, InputEvent, CursorImage } from '../win16/platform';
-import { openISO, openMDS, openCUE, Disc, ByteSource } from '../assets/disc';
-import { buildInstall, DiscFS, detectLanguage } from '../assets/install';
+import { openISO, openMDS, openCUE, openFolder, FolderDisc, Disc, ByteSource } from '../assets/disc';
+import { buildInstall, DiscFS, detectLanguage, folderMissing } from '../assets/install';
+import { unzipSync } from 'fflate';
 import { smfDurationMs } from '../media/smf';
 import { ModRuntime } from '../mods/runtime';
 import type { ActiveMod } from '../mods/types';
@@ -15,6 +16,17 @@ function openDisc(files: { name: string; file: Blob }[]): Disc {
   const frs = new FileReaderSync();
   const src = (b: Blob): ByteSource => ({ size: b.size, read: (o: number, l: number) => new Uint8Array(frs.readAsArrayBuffer(b.slice(o, Math.min(b.size, o + l)))) });
   const by = (ext: string) => files.find(f => f.name.toLowerCase().endsWith(ext));
+  // an installed game folder, picked as a folder or as a .zip (e.g. the small "RIP" release)
+  const folder = (d: FolderDisc | null) => {
+    if (!d) throw new Error('No HOLIDAY.EXE found: this is not a Holiday Island game folder.');
+    const miss = folderMissing(d); d.volumeLabel = 'folder' + (miss.films ? ':nofilms' : '') + (miss.speech ? ':nospeech' : ''); return d;
+  };
+  if (files.length === 1 && /\.zip$/i.test(files[0].name)) {
+    const z = unzipSync(new Uint8Array(frs.readAsArrayBuffer(files[0].file)));
+    return folder(openFolder(Object.entries(z).map(([path, d]) => ({ path, size: d.length, read: () => d }))));
+  }
+  if (files.some(f => /(^|\/)holiday\.exe$/i.test(f.name)))
+    return folder(openFolder(files.map(f => ({ path: f.name, size: f.file.size, read: () => new Uint8Array(frs.readAsArrayBuffer(f.file)) }))));
   const mds = by('.mds');
   if (mds) {
     const mdf = by('.mdf'); if (!mdf) throw new Error('The .mdf image file belonging to the .mds is missing.');
@@ -26,7 +38,7 @@ function openDisc(files: { name: string; file: Blob }[]): Disc {
     return openCUE(text, (n) => { const f = files.find(x => x.name.toLowerCase() === n.toLowerCase().replace(/^.*[\\/]/, '')); return f ? src(f.file) : null; });
   }
   const iso = files.find(f => /\.(iso|img|bin|mdf)$/i.test(f.name));
-  if (!iso) throw new Error('No disc image (.iso, .bin/.cue or .mdf/.mds) was provided.');
+  if (!iso) throw new Error('No disc image (.iso, .bin/.cue or .mdf/.mds) or game folder was provided.');
   return openISO(src(iso.file));
 }
 

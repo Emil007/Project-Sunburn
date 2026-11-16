@@ -4,10 +4,11 @@
   "repo": "Emil007/Project-Sunburn",
   "name": "Project Sunburn (Holiday Island)",
   "game": {
-    "kind": "iso",
-    "label": "Your Holiday Island CD (English or German, 1996): the .iso, or the .mdf with its .mds beside it.",
+    "kind": "iso_or_folder",
+    "label": "Your Holiday Island CD (English or German, 1996): the .iso, or the .mdf with its .mds beside it. An installed game folder (with HOLIDAY.EXE) works too, also the small RIP release, which has no films and no speech.",
     "check": {
-      "iso9660": "HOLIDA1A.ICO"
+      "iso9660": "HOLIDA1A.ICO",
+      "file": "HOLIDAY.EXE"
     },
     "dumps": [
       {

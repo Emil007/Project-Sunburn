@@ -1,5 +1,5 @@
 // Rebuild the Holiday Island hard disk installation from the player's CD image.
-import { Disc } from './disc';
+import { Disc, FolderDisc } from './disc';
 import { lzhufDecode } from './lzhuf';
 import { MemFS, FSProvider } from '../win16/vfs';
 
@@ -19,8 +19,13 @@ export function parseSunflowersArchive(d: Uint8Array): SFEntry[] {
 }
 
 export function detectLanguage(disc: Disc): Lang | null {
+  if (disc instanceof FolderDisc && !disc.files.has('HOLIDAY.EXE')) return null;
   if (disc.dirs.has('SPRACHE1')) return 'en';
   if (disc.dirs.has('SPRADEU1')) return 'de';
+  if (disc instanceof FolderDisc) { // an install without the speech folders: the currency factor tells (EN 4, DE 10)
+    const t = disc.readFile('TEXTE\\SONSTIGE.TXT'); const m = t && new TextDecoder('latin1').decode(t).match(/W\w*hrungsfaktor\D*(\d+)/i);
+    if (m) return m[1] === '10' ? 'de' : 'en';
+  }
   const ar = disc.readFile('AUTORUN.INF'); if (ar && /language\s*=\s*english/i.test(new TextDecoder().decode(ar))) return 'en';
   return null;
 }
@@ -33,6 +38,7 @@ export interface InstallOptions { videoHi: boolean; soundHi: boolean; }
 export function buildInstall(disc: Disc, opts: InstallOptions = { videoHi: true, soundHi: true }): Installed {
   const lang = detectLanguage(disc);
   if (!lang) throw new Error('This does not look like a Holiday Island CD (no speech folder found).');
+  if (disc instanceof FolderDisc) return installFromFolder(disc, lang, opts);
   const arc = disc.readFile('_FILES.1');
   if (!arc) throw new Error('Installer archive _FILES.1 not found on the disc.');
   const C = new MemFS();
@@ -58,6 +64,27 @@ export function buildInstall(disc: Disc, opts: InstallOptions = { videoHi: true,
   }
   // setup.dat: CD path, speech on CD, graphics on CD, film quality, sound
   const setup = `D:\\\r\n1\r\n1\r\n${opts.videoHi ? 'H' : 'L'}\r\n${opts.soundHi ? 'H' : 'L'}\r\n`;
+  C.add('HOLIDAY\\SETUP.DAT', new TextEncoder().encode(setup));
+  return { lang, C, exePath: 'C:\\HOLIDAY\\HOLIDAY.EXE' };
+}
+
+/** What a game folder lacks compared to the CD: the RIP release has a placeholder in place of every
+ *  film and empty speech files. The game runs without them (films are skipped, speech is silent). */
+export function folderMissing(disc: Disc): { films: boolean; speech: boolean } {
+  const sizes = (pre: string) => [...disc.files].filter(([p]) => p.startsWith(pre)).map(([, v]) => v.size);
+  const films = sizes('FILMHI\\'); const speech = sizes('SPRACHE');
+  return { films: !films.length || new Set(films).size === 1 && films.length > 3, speech: !speech.length || speech.every(s => s === 0) };
+}
+
+// An installed folder: copy the program files to C:\HOLIDAY and keep films, speech and graphics on D:
+// as with the CD, so both sources run the same way.
+function installFromFolder(disc: FolderDisc, lang: Lang, opts: InstallOptions): Installed {
+  const C = new MemFS();
+  const onD = /^(FILMHI|FILMLO|SPRACHE\d|SPRADEU\d|GRAFIK|VBE|VFW[^\\]*)\\/;
+  const skip = /^(SETUP\.DAT|UNINST\.EXE|INSTALL\.ICO|MAPS\\LAST\.MAP)$/;
+  for (const [p] of disc.files) if (!onD.test(p) && !skip.test(p)) C.add('HOLIDAY\\' + p, disc.readFile(p)!);
+  const videoHi = opts.videoHi || !disc.dirs.has('FILMLO');
+  const setup = `D:\\\r\n1\r\n1\r\n${videoHi && disc.dirs.has('FILMHI') ? 'H' : 'L'}\r\n${opts.soundHi ? 'H' : 'L'}\r\n`;
   C.add('HOLIDAY\\SETUP.DAT', new TextEncoder().encode(setup));
   return { lang, C, exePath: 'C:\\HOLIDAY\\HOLIDAY.EXE' };
 }

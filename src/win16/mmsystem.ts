@@ -127,6 +127,9 @@ export function installMM(w: Win16) {
       } else if (type === 'avivideo') {
         const data = file ? findFile(file) : null; if (!data) { w.log(`MCI: file not found: ${file}`); return 275; }
         const a = parseAVI(data); if (!a) return 296;
+        // only Cinepak films exist on the CDs; a game folder may hold placeholders in another codec
+        // (the RIP release: an 80x80 Video-1 clip in place of every film) - those are skipped
+        if (a.codec.toLowerCase() !== 'cvid') { w.log(`MCI: film ${file} skipped (codec ${a.codec})`); a.frames = []; a.audio = null; }
         d.avi = new AVIPlayer(a); d.lengthMs = d.avi.lengthMs;
       } else if (type === 'cdaudio') {
         if (!P.cd) return 271; // MCIERR_DEVICE_NOT_READY? use generic
@@ -134,6 +137,9 @@ export function installMM(w: Win16) {
       } else if (type === 'waveaudio') {
         const data = file ? findFile(file) : null; if (!data) { w.log(`MCI: file not found: ${file}`); return 275; } const pcm = parseWav(data) || { rate: 22050, channels: 1, data: new Float32Array(1) };
         (d as any).pcm = pcm; d.lengthMs = pcm.data.length / pcm.channels / pcm.rate * 1000;
+        // an empty speech file (game folders without speech, like the RIP release): the news and the
+        // advisers close when their speech ends, so give the player time to read instead of none
+        if (!data.length) d.lengthMs = 6000;
       } else return 263; // MCIERR_INVALID_DEVICE_NAME
       devs.set(d.id, d);
       mem.w16(L + 4, d.id);

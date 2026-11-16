@@ -63,7 +63,7 @@ function browseDownload(u) {
 }
 
 // ---- start options (RecompLauncher and other front-ends, see recomplauncher.json) ----
-//   --disc <image>      play this disc image (.iso, .mds/.mdf, .cue/.bin); added to the library once
+//   --disc <image>      play this disc image (.iso, .mds/.mdf, .cue/.bin) or game folder / .zip; added to the library once
 //   --play              start the game right away (default with --disc)
 //   --launcher          show the launcher even with --disc
 //   --fullscreen / --windowed
@@ -84,7 +84,8 @@ function parseArgs(argv) {
     else if (a === '--set') { const [k, ...v] = String(next() || '').split('='); if (k) o.set[k] = v.join('='); }
     else if (a === '--modset') { const [k, ...v] = String(next() || '').split('='); if (k && k.includes('.')) o.modset[k] = v.join('='); }
     else if (a === '--mod') { const [k, v] = String(next() || '').split('='); if (k) o.mods[k] = v !== 'off' && v !== '0' && v !== 'false'; }
-    else if (!a.startsWith('-') && /\.(iso|mds|mdf|cue|bin|img)$/i.test(a) && !o.disc) o.disc = a;   // a disc image dropped on the program
+    else if (!a.startsWith('-') && /\.(iso|mds|mdf|cue|bin|img|zip)$/i.test(a) && !o.disc) o.disc = a;   // a disc image (or a zipped game folder) dropped on the program
+    else if (!a.startsWith('-') && !o.disc && (() => { try { return fs.statSync(a).isDirectory() && fs.readdirSync(a).some((n) => /^holiday\.exe$/i.test(n)); } catch { return false; } })()) o.disc = a;   // a game folder dropped on the program
   }
   if (o.disc) { o.disc = path.resolve(o.disc); if (!o.launcher) o.play = true; }
   return o;
@@ -93,6 +94,16 @@ const launch = parseArgs(process.argv.slice(app.isPackaged ? 1 : 2));
 
 // the disc image and the files that belong to it (an .mds with its .mdf, a .cue with its tracks)
 function discFiles(main) {
+  // an installed game folder: every file below it, by relative path
+  try {
+    if (fs.statSync(main).isDirectory()) {
+      const out = [];
+      const walk = (d, pre) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (out.length > 5000) return; const f = path.join(d, e.name); if (e.isDirectory()) walk(f, pre + e.name + '/'); else if (e.isFile()) out.push({ name: pre + e.name, size: fs.statSync(f).size }); } };
+      walk(main, '');
+      return out.some((f) => /(^|\/)holiday\.exe$/i.test(f.name)) ? out : [];
+    }
+  } catch { return []; }
+  if (/\.zip$/i.test(main)) { try { return [{ name: path.basename(main), size: fs.statSync(main).size }]; } catch { return []; } }
   const dir = path.dirname(main), base = path.basename(main), stem = base.replace(/\.[^.]+$/, '').toLowerCase();
   const names = new Set([base]);
   let entries = [];
@@ -140,7 +151,7 @@ app.whenReady().then(() => {
       // only the files of the disc named on the command line
       const name = u.searchParams.get('name'); const files = launch.disc ? discFiles(launch.disc) : [];
       if (!files.some((f) => f.name === name)) return new Response('not found', { status: 404, headers: ISO });
-      const f = path.join(path.dirname(launch.disc), name);
+      const f = fs.statSync(launch.disc).isDirectory() ? path.join(launch.disc, ...name.split('/')) : path.join(path.dirname(launch.disc), name);
       return new Response(Readable.toWeb(fs.createReadStream(f)), { headers: { 'content-type': 'application/octet-stream', 'content-length': String(fs.statSync(f).size), ...ISO } });
     }
     if (u.pathname === '/__saves') return savesRoute(req, u);
