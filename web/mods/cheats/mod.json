@@ -1,0 +1,3 @@
+{ "id": "cheats", "name": "Cheat menu", "name_de": "Cheat-Menü", "version": "1.0", "author": "Project Sunburn", "category": "Gameplay",
+  "hidden": true, "script": "script.js", "ui": "ui.js",
+  "description": "The F9 cheat menu. Part of the game, not listed with the mods.", "description_de": "Das Cheat-Menü auf F9. Teil des Spiels, nicht in der Modliste." }

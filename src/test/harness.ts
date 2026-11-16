@@ -35,6 +35,7 @@ if (opt('stackFor')) { (globalThis as any).__stackFor = opt('stackFor'); (global
 const maxMs = parseInt(opt('ms', '20000'));
 const outDir = opt('out', 'shots');
 fs.mkdirSync(outDir, { recursive: true });
+let rtRef: any = null;
 const script: { at: number; ev: InputEvent }[] = opt('script') ? JSON.parse(fs.readFileSync(opt('script'), 'utf8')) : [];
 
 let virtTime = 0; let waitTotal = 0; let lastReport = 0; let lastWait = 0; let lastInstr = 0; // virtual clock in ms, advanced by wait() and per-instruction
@@ -45,7 +46,8 @@ const logLines: string[] = [];
 const platform: Platform = {
   now: () => virtTime,
   wait: (ms) => { virtTime += Math.max(ms, 1); waitTotal += Math.max(ms, 1); if (virtTime > maxMs) { (globalThis as any).W?.exit(0); } },
-  pollEvents: () => { while (script.length && script[0].at <= virtTime) events.push(script.shift()!.ev); return events.splice(0); },
+  // script events of type "modcmd" ({ type: 'modcmd', mod: 'cheats', cmd: 1, arg: 0 }) go to the mod's script like the F9 menu's
+  pollEvents: () => { while (script.length && script[0].at <= virtTime) { const ev: any = script.shift()!.ev; if (ev.type === 'modcmd') { const i = (rtRef?.mods || []).findIndex((m: any) => m.manifest.id === ev.mod); rtRef?.pendingCommands.push([i, ev.cmd, ev.arg | 0]); rtRef?.deliverCommands(); } else events.push(ev); } return events.splice(0); },
   present: (rgba, w, h) => { lastFrame = rgba; lastW = w; lastH = h; if (virtTime >= nextShot) { fs.writeFileSync(path.join(outDir, `t${String(Math.floor(virtTime)).padStart(7, '0')}.png`), png(rgba, w, h)); nextShot = virtTime + shotEvery; } },
   setCursor: () => {},
   messageBox: (t, c, ty) => { console.log(`MESSAGEBOX [${c}] ${t} type=${ty}`); const k = ty & 0xf; return k === 0 ? 1 : k === 4 ? 7 : k === 2 ? 3 : 2; },
@@ -86,6 +88,7 @@ if (opt('disc')) {
   process.exit(2);
 }
 rt = new ModRuntime(modList, lang, (s) => console.log(s), opt('host') ? { w: +opt('host').split('x')[0], h: +opt('host').split('x')[1] } : undefined);
+rtRef = rt; if (opt('toui')) rt.toUI = (d: any) => console.log('TOUI ' + JSON.stringify(d));
 for (const [p, d] of rt.overlayHD) C.add('HOLIDAY\\' + p, d);
 if (opt('writes')) { const wd = opt('writes'); C.onWrite = (p: string, d: Uint8Array | null) => { const f = path.join(wd, p.replace(/\\/g, '/')); fs.mkdirSync(path.dirname(f), { recursive: true }); if (d) fs.writeFileSync(f, d); else if (fs.existsSync(f)) fs.unlinkSync(f); }; }
 if (opt('restore')) { const rd = opt('restore'); const walk = (d: string, pre: string) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) walk(path.join(d, e.name), pre + e.name + '\\'); else C.add(pre + e.name, new Uint8Array(fs.readFileSync(path.join(d, e.name)))); } }; walk(rd, ''); }
@@ -114,6 +117,8 @@ if (opt('watch')) {
 }
 let lastStepTime = 0;
 const longest = { ms: 0, instr: 0 };
+if (opt('memdump')) process.on('exit', () => { fs.writeFileSync(opt('memdump'), w.m.mem.u8); const segs = w.mainModule.segSels.map((s: number, i: number) => `${i + 1}:${s.toString(16)}:${w.m.mem.lin(s, 0).toString(16)}`); const ldt: string[] = []; for (let sl = 7; sl < 0x10000; sl += 8) { const d = w.m.mem.getDesc(sl); if (d) ldt.push(`${sl.toString(16)} ${d.base.toString(16)} ${(d.limit + 1).toString(16)}`); }
+  fs.writeFileSync(opt('memdump') + '.segs', segs.join('\n') + `\nDS ${w.mainModule.autoDS.toString(16)} ${w.m.mem.lin(w.mainModule.autoDS, 0).toString(16)}\n`); fs.writeFileSync(opt('memdump') + '.ldt', ldt.join('\n')); });
 process.on('exit', () => { if (longest.ms > 500) console.log(`longest slice ${longest.ms.toFixed(0)}ms, ${(longest.instr / 1e6).toFixed(1)}M instr = ${(longest.instr / longest.ms / 1e3).toFixed(1)}M instr/s`); });
 const prof = new Map<number, number>(); let profOn = false;
 if (opt('profFrom')) {

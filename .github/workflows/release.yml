@@ -110,5 +110,5 @@ jobs:
           files: artifacts/*
           generate_release_notes: true
           body: |
-            **Downloads:** Windows (`win-x64` / `win-arm64` zip), macOS (`mac-arm64` / `mac-x64` dmg), Linux / Steam Deck (`AppImage`, `tar.gz`, x64 and arm64), web version (`web.zip`, or play at https://emil007.github.io/Project-Sunburn/).
+            **Downloads:** Windows (`Windows-x64` / `Windows-arm64` zip), macOS (`macOS-arm64` / `macOS-x64` dmg), Linux / Steam Deck (`Linux` AppImage or tar.gz, x64 and arm64). Also installs from RecompLauncher, web version (`web.zip`, or play at https://emil007.github.io/Project-Sunburn/).
             You need your own Holiday Island CD image (English or German). See the README for details.

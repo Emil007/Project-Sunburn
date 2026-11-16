@@ -6,7 +6,7 @@ import { zipSync, unzipSync } from 'fflate';
 import { WorkletSynthesizer, Sequencer } from 'spessasynth_lib';
 
 import { hiLog, saveLog, logText } from './log';
-import { loadCatalogue, buildActive, fileText, fileData } from './mods';
+import { loadCatalogue, buildActive, fileText, fileData, setEnabled, setSetting, catalogue } from './mods';
 import { renderMods } from './modsui';
 import type { ActiveMod } from '../mods/types';
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -92,7 +92,44 @@ async function loadSaves(lang: Lang) {
   return out;
 }
 const persistQueue: Promise<void>[] = [];
-async function persistSave(lang: Lang, path: string, data: Uint8Array | null) {
+// ---- desktop app: saves are mirrored to Documents/Project Sunburn/Saves/<lang> (see electron/main.cjs) ----
+const isDesktop = location.protocol === 'app:';
+const docSave = (lang: Lang, p: string) => `/__saves?lang=${lang}&path=${encodeURIComponent(p)}`;
+async function mirrorSave(lang: Lang, path: string, data: Uint8Array | null) {
+  if (!isDesktop) return;
+  try { await fetch(docSave(lang, path), data ? { method: 'PUT', body: data as BodyInit } : { method: 'DELETE' }); } catch (e) { hiLog('warn', 'saves folder: ' + e); }
+}
+// before a game starts: saves that are newer in the Documents folder (restored by a backup tool,
+// copied from another PC) come in; saves only in the app go out
+async function syncSaveFolder(lang: Lang) {
+  if (!isDesktop) return;
+  try {
+    const docs: { path: string; size: number; mtime: number }[] = await (await fetch(`/__saves?lang=${lang}`)).json();
+    const mine = new Map((await loadSaveInfo(lang)).map((f) => [f.path.toUpperCase(), f]));
+    let inN = 0, outN = 0;
+    for (const d of docs) {
+      const m = mine.get(d.path.toUpperCase());
+      if (m && m.size === d.size && m.mtime >= d.mtime - 2000) continue;
+      if (m && m.mtime > d.mtime) continue;
+      const r = await fetch(docSave(lang, d.path)); if (!r.ok) continue;
+      await persistSave(lang, m?.path || d.path, new Uint8Array(await r.arrayBuffer()), false); inN++;
+    }
+    const docNames = new Set(docs.map((d) => d.path.toUpperCase()));
+    for (const f of await loadSaves(lang)) if (!docNames.has(f.path.toUpperCase())) { await mirrorSave(lang, f.path, f.data); outN++; }
+    if (inN || outN) hiLog('info', `saves folder: ${inN} in, ${outN} out`);
+  } catch (e) { hiLog('warn', 'saves folder sync failed: ' + e); }
+}
+async function loadSaveInfo(lang: Lang) {
+  const out: { path: string; size: number; mtime: number }[] = [];
+  const root = await opfsRoot(); if (!root) return out;
+  try {
+    const dir = await (await root.getDirectoryHandle('saves', { create: true })).getDirectoryHandle(lang, { create: true });
+    for await (const [name, h] of (dir as any).entries()) if (h.kind === 'file') { const f: File = await h.getFile(); out.push({ path: decodeURIComponent(name), size: f.size, mtime: f.lastModified }); }
+  } catch { /* */ }
+  return out;
+}
+async function persistSave(lang: Lang, path: string, data: Uint8Array | null, mirror = true) {
+  if (mirror) void mirrorSave(lang, path, data);
   // only persist user data, not the generated install
   const root = await opfsRoot(); if (!root) return;
   const saves = await root.getDirectoryHandle('saves', { create: true }); const dir = await saves.getDirectoryHandle(lang, { create: true });
@@ -512,8 +549,10 @@ async function startGame() {
   try { mods = await buildActive(lang); } catch (e) { hiLog('error', 'loading mods failed', e); }
   hiLog('info', `start: disc ${lang}, settings ${JSON.stringify(settings)}, canvas ${canvas.clientWidth}x${canvas.clientHeight} @${devicePixelRatio}`);
   for (const m of mods) hiLog('info', `mod ${m.manifest.id} ${m.manifest.version || ''} ${JSON.stringify(m.settings)}`);
-  const shaderMod = [...mods].reverse().find((m) => m.manifest.shader && fileText(m, m.manifest.shader));
-  const filter = shaderMod ? { name: shaderMod.manifest.id, src: fileText(shaderMod, shaderMod.manifest.shader!)!, uniforms: Object.fromEntries((shaderMod.manifest.settings || []).filter((x) => x.type !== 'text' && x.type !== 'file').map((x) => ['u_' + x.key, Number(typeof shaderMod.settings[x.key] === 'boolean' ? +shaderMod.settings[x.key] : shaderMod.settings[x.key]) || 0])) } : null;
+  // "shader" may name its file through settings: "{style}.glsl" with the setting style = "crt" -> crt.glsl
+  const shaderFile = (m: ActiveMod) => m.manifest.shader?.replace(/\{(\w+)\}/g, (_, k) => String(m.settings[k] ?? ''));
+  const shaderMod = [...mods].reverse().find((m) => m.manifest.shader && fileText(m, shaderFile(m)!));
+  const filter = shaderMod ? { name: `${shaderMod.manifest.id}:${shaderFile(shaderMod)}`, src: fileText(shaderMod, shaderFile(shaderMod)!)!, uniforms: Object.fromEntries((shaderMod.manifest.settings || []).filter((x) => x.type !== 'text' && x.type !== 'file').map((x) => ['u_' + x.key, Number(typeof shaderMod.settings[x.key] === 'boolean' ? +shaderMod.settings[x.key] : shaderMod.settings[x.key]) || 0])) } : null;
   let customSf: Uint8Array | null = null;
   for (const m of mods) { const d = (m.manifest.soundfont && fileData(m, m.manifest.soundfont)) || m.files.find((f) => f.path.startsWith('@setting/') && /\.sf[23]$/i.test(String(m.settings[f.path.slice(9)])))?.data; if (d) customSf = d; }
   let renderer: Renderer;
@@ -522,6 +561,7 @@ async function startGame() {
   const synthP = audio.initSynth((s) => { $('loadingText').textContent = s; }, customSf);
   const ctrlSab = new SharedArrayBuffer(CTRL_INTS * 4), frameSab = new SharedArrayBuffer(FRAME_MAX), cursorSab = new SharedArrayBuffer(CURSOR_MAX);
   const ctrl = new Int32Array(ctrlSab), frame = new Uint8Array(frameSab), cursorBuf = new Uint8Array(cursorSab);
+  await syncSaveFolder(lang);
   const saves = await loadSaves(lang);
   await synthP;
   $('loadingText').textContent = t('starting');
@@ -566,6 +606,7 @@ async function startGame() {
   // UI-thread mod scripts (ui.js)
   const timers: number[] = []; const wheelHooks: ((dy: number, dx: number, shift: boolean) => boolean)[] = [];
   const mouseHooks: ((type: 'down' | 'move' | 'up', x: number, y: number, button: number) => boolean | void)[] = [];
+  const keyHooks: ((e: KeyboardEvent) => boolean | void)[] = [];
   const mouseHook = (type: 'down' | 'move' | 'up', x: number, y: number, b: number) => { let handled = false; for (const h of mouseHooks) { try { if (h(type, x, y, b)) handled = true; } catch (err) { console.error(err); } } return handled; };
   const uiMods: { id: string; message?: (d: any) => void }[] = [];
   for (const m of mods) {
@@ -591,6 +632,10 @@ async function startGame() {
       visible: () => ({ ...renderer.visible }),
       file: (p: string) => fileData(m, p), text: (p: string) => fileText(m, p),
       onMessage: (fn: (d: any) => void) => { handle.message = fn; },
+      // a command for this mod's script.js (api.onCommand there): two whole numbers
+      command: (cmd: number, arg = 0) => pushEv(EVT.modcmd, mods.indexOf(m), cmd | 0, arg | 0),
+      // see keys before the game; return true to keep a key from the game
+      onKey: (fn: (e: KeyboardEvent) => boolean | void) => { keyHooks.push(fn); },
       overlay: () => { const d = document.createElement('div'); d.className = 'mod-overlay'; game.appendChild(d); return d; },
     };
     try { new Function('api', src)(api); uiMods.push(handle); } catch (e) { console.error(`ui script of mod "${m.manifest.id}" failed:`, e); }
@@ -647,6 +692,7 @@ async function startGame() {
   const onKey = (e: KeyboardEvent) => {
     if (!$('modal').hidden || !$('drawer').hidden) return;
     if (e.code === 'F12') return; // developer tools
+    for (const h of keyHooks) { try { if (h(e)) { e.preventDefault(); return; } } catch (err) { console.error(err); } }
     if (e.code === 'F11' && e.type === 'keydown') { e.preventDefault(); toggleFullscreen(); return; }
     if (e.code === 'F10' && e.type === 'keydown') { e.preventDefault(); openDrawer(audio); return; }
     const vk = vkOf(e); if (!vk) return;
@@ -780,5 +826,37 @@ async function main() {
   await loadLibrary(); renderLibrary();
   await loadCatalogue(); renderMods({ t, ui: () => settings.ui as 'en' | 'de', lang: () => (settings.lang || 'en') as string, modal: showModal });
   (window as any).__hi = { settings, library, importFiles, startGame, logText };
+  await applyLaunchOptions();
+}
+// desktop app started with options (RecompLauncher, a shortcut, a disc image dropped on the program)
+async function applyLaunchOptions() {
+  if (!isDesktop) return;
+  let o: { disc: { files: { name: string; size: number }[] } | null; play: boolean; set: Record<string, string>; mods: Record<string, boolean>; modset?: Record<string, string> };
+  try { o = await (await fetch('/__launch')).json(); } catch { return; }
+  const known: Record<string, (v: string) => any> = { scale: String, aspect: String, video: String, musicSrc: String, ui: String, music: Number, sfx: Number };
+  let changed = false;
+  for (const [k, v] of Object.entries(o.set || {})) if (known[k]) { (settings as any)[k] = known[k](v); changed = true; }
+  if (changed) { saveSettings(); hiLog('info', 'settings from the command line: ' + JSON.stringify(o.set)); }
+  for (const [id, on] of Object.entries(o.mods || {})) if (catalogue.has(id)) setEnabled(id, on);
+  for (const [k, v] of Object.entries(o.modset || {})) {
+    const [id, key] = [k.slice(0, k.indexOf('.')), k.slice(k.indexOf('.') + 1)]; const s = catalogue.get(id)?.manifest.settings?.find((x) => x.key === key); if (!s) continue;
+    setSetting(id, key, s.type === 'toggle' ? v === 'on' || v === 'true' || v === '1' : s.type === 'range' ? Number(v) : v);
+  }
+  if (!o.disc) return;
+  // the same disc already in the library? (same file names and sizes)
+  const sig = (fs: { name: string; size: number }[]) => fs.map((f) => `${f.name.toLowerCase()}:${f.size}`).sort().join('|');
+  const want = sig(o.disc.files);
+  let lang = [...library.values()].find((d) => sig(d.files.map((f) => ({ name: f.name, size: f.file.size }))) === want)?.lang;
+  if (!lang) {
+    const st = $('importStatus'); st.hidden = false; st.className = 'status'; st.textContent = t('checking') + ' ' + o.disc.files.map((f) => f.name).join(' + ');
+    const fl: File[] = [];
+    for (const f of o.disc.files) fl.push(new File([await (await fetch(`/__launchfile?name=${encodeURIComponent(f.name)}`)).blob()], f.name));
+    const before = new Set(library.keys());
+    await importFiles(fl);
+    lang = [...library.keys()].find((k) => !before.has(k)) || ([...library.values()].find((d) => sig(d.files.map((f) => ({ name: f.name, size: f.file.size }))) === want)?.lang);
+  }
+  if (!lang) { hiLog('warn', 'the disc from the command line is not a Holiday Island CD'); return; }
+  settings.lang = lang; saveSettings(); renderLibrary();
+  if (o.play) await startGame();
 }
 void main();

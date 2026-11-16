@@ -28,14 +28,14 @@ export function renderMods(c?: Ctx) {
     const dir = $('modDir') as HTMLInputElement; dir.onchange = () => { if (dir.files?.length) void inst([...dir.files]); dir.value = ''; };
   }
   // preset highlight
-  const rec = [...catalogue.values()].filter((e) => e.manifest.recommended).map((e) => e.manifest.id).sort().join();
-  const on = Object.keys(modState.enabled).filter((k) => modState.enabled[k] && catalogue.has(k)).sort().join();
+  const rec = [...catalogue.values()].filter((e) => e.manifest.recommended && !e.manifest.hidden).map((e) => e.manifest.id).sort().join();
+  const on = Object.keys(modState.enabled).filter((k) => modState.enabled[k] && catalogue.has(k) && !catalogue.get(k)!.manifest.hidden).sort().join();
   $('modPresets').querySelectorAll('button').forEach((b) => b.classList.toggle('on', ((b as HTMLElement).dataset.p === 'original' && !on) || ((b as HTMLElement).dataset.p === 'recommended' && on === rec)));
-  $('modsCount').textContent = String(enabledMods(lang).length);
+  $('modsCount').textContent = String(enabledMods(lang).filter((e) => !e.manifest.hidden).length);
 
   const list = $('modList'); list.innerHTML = '';
   const groups = new Map<string, ModEntry[]>();
-  for (const e of catalogue.values()) { const c = CATS.includes(e.manifest.category || '') ? e.manifest.category! : 'Other'; (groups.get(c) || groups.set(c, []).get(c)!).push(e); }
+  for (const e of catalogue.values()) { if (e.manifest.hidden) continue; const c = CATS.includes(e.manifest.category || '') ? e.manifest.category! : 'Other'; (groups.get(c) || groups.set(c, []).get(c)!).push(e); }
   for (const cat of [...CATS, 'Other']) {
     const items = groups.get(cat); if (!items?.length) continue;
     list.append(el('div', { className: 'modcat', textContent: t('cat' + cat) }));
@@ -58,20 +58,24 @@ function modRow(e: ModEntry, lang: string, L: (o: any, k: string) => string) {
   const row = el('div', { className: 'mod' + (enabled ? '' : ' off') + (ok ? '' : ' na') }, head);
   if (enabled && m.settings?.length) {
     const box = el('div', { className: 'mod-settings' });
-    for (const s of m.settings) box.append(settingField(m.id, s, L));
+    const fields: [ModSetting, HTMLElement][] = [];
+    // settings with "when" are only shown while the settings they depend on have those values
+    const refresh = () => { for (const [s, f] of fields) f.hidden = !!s.when && Object.entries(s.when).some(([k, want]) => { const dep = m.settings!.find((x) => x.key === k); return !dep || String(settingValue(m.id, dep)) !== String(want); }); };
+    for (const s of m.settings) { const f = settingField(m.id, s, L, refresh); fields.push([s, f]); box.append(f); }
+    refresh();
     row.append(box);
   }
   return row;
 }
 
-function settingField(id: string, s: ModSetting, L: (o: any, k: string) => string) {
+function settingField(id: string, s: ModSetting, L: (o: any, k: string) => string, changed: () => void) {
   const { t } = ctx!; const v = settingValue(id, s); const label = L(s, 'label');
-  if (s.type === 'toggle') return el('label', { className: 'field chk' }, el('input', { type: 'checkbox', checked: !!v, onchange: (e: Event) => setSetting(id, s.key, (e.target as HTMLInputElement).checked) }), label);
+  if (s.type === 'toggle') return el('label', { className: 'field chk' }, el('input', { type: 'checkbox', checked: !!v, onchange: (e: Event) => { setSetting(id, s.key, (e.target as HTMLInputElement).checked); changed(); } }), label);
   const f = el('div', { className: 'field' });
   const out = el('output');
   f.append(el('label', {}, el('span', { textContent: label }), out));
   if (s.type === 'select') {
-    const sel = el('select', { onchange: (e: Event) => setSetting(id, s.key, (e.target as HTMLSelectElement).value) });
+    const sel = el('select', { onchange: (e: Event) => { setSetting(id, s.key, (e.target as HTMLSelectElement).value); changed(); } });
     for (const o of s.options || []) sel.append(el('option', { value: String(o.value), textContent: L(o, 'label'), selected: String(o.value) === String(v) }));
     f.append(sel);
   } else if (s.type === 'range') {

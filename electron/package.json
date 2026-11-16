@@ -31,7 +31,8 @@
         }
       ],
       "icon": "icon.png",
-      "signAndEditExecutable": false
+      "signAndEditExecutable": false,
+      "artifactName": "ProjectSunburn-${version}-Windows-${arch}.${ext}"
     },
     "linux": {
       "target": [
@@ -52,7 +53,8 @@
       ],
       "category": "Game",
       "icon": "icon.png",
-      "executableName": "project-sunburn"
+      "executableName": "project-sunburn",
+      "artifactName": "ProjectSunburn-${version}-Linux-${arch}.${ext}"
     },
     "artifactName": "ProjectSunburn-${version}-${os}-${arch}.${ext}",
     "publish": null,
@@ -77,11 +79,18 @@
       "icon": "icon.png",
       "identity": "-",
       "hardenedRuntime": false,
-      "gatekeeperAssess": false
+      "gatekeeperAssess": false,
+      "artifactName": "ProjectSunburn-${version}-macOS-${arch}.${ext}"
     },
     "dmg": {
       "artifactName": "ProjectSunburn-${version}-mac-${arch}.${ext}"
-    }
+    },
+    "extraFiles": [
+      {
+        "from": "../recomplauncher.json",
+        "to": "recomplauncher.json"
+      }
+    ]
   },
   "devDependencies": {
     "electron": "^33.4.11",

@@ -42,8 +42,16 @@ export class User {
   timerScale = 1;
   /** only timers with exactly this interval are scaled (0 = all timers under 500 ms) */
   timerScaleOnly = 0;
+  /** change the game speed; timers already waiting are rescheduled (a paused timer would never wake up) */
+  setTimerScale(f: number, only = 0) {
+    this.timerScale = f; this.timerScaleOnly = only;
+    const now = this.w.platform.now();
+    for (const t of this.timers) t.next = Math.min(t.next, now + this.tInt(t.interval));
+    if (f === 0) for (const t of this.timers) if (!only || t.interval === only) t.next = now + this.tInt(t.interval);
+  }
   private tInt(ms: number) {
     if (this.timerScale === 1 || (this.timerScaleOnly ? ms !== this.timerScaleOnly : ms >= 500)) return ms;
+    if (this.timerScale === 0) return 0x3fffffff; // paused: the timer doesn't fire
     return Math.max(1, ms / this.timerScale);
   }
   // mods can take mouse/keyboard events before the game sees them (return true = consumed)

@@ -30,6 +30,9 @@ function openDisc(files: { name: string; file: Blob }[]): Disc {
   return openISO(src(iso.file));
 }
 
+const modCommands: [number, number, number][] = [];
+let deliverSoon = false; // a mod command arrived while polling input
+let deliverNow: () => void = () => {};
 self.onmessage = (e: MessageEvent) => {
   const msg = e.data;
   if (msg.t === 'probe') {
@@ -67,6 +70,7 @@ function run(cfg: StartConfig) {
   const inst = buildInstall(disc, { videoHi: cfg.videoHi, soundHi: cfg.soundHi });
   const rt = new ModRuntime(((cfg as any).mods || []) as ActiveMod[], inst.lang, (s) => post({ t: 'log', s }), (cfg as any).host);
   rt.toUI = (data) => post({ t: 'modstatus', data } as any);
+  rt.pendingCommands = modCommands; deliverNow = () => rt.deliverCommands();
   for (const [p, d] of rt.overlayHD) inst.C.add('HOLIDAY\\' + p, d);
   for (const s of cfg.saves) inst.C.add(s.path, s.data);
   inst.C.onWrite = (p, d) => post({ t: 'persist', path: p, data: d ? d.slice() : null });
@@ -100,11 +104,14 @@ function run(cfg: StartConfig) {
           case EVT.mousemove: ev.type = 'mousemove'; break; case EVT.mousedown: ev.type = 'mousedown'; break; case EVT.mouseup: ev.type = 'mouseup'; break;
           case EVT.keydown: ev.type = 'keydown'; break; case EVT.keyup: ev.type = 'keyup'; break; case EVT.quit: ev.type = 'quit'; break;
         }
+        // a command from a mod's ui.js to its script.js (x = mod index, y = command, button = argument)
+        if (type === EVT.modcmd) { modCommands.push([ctrl[o + 1], ctrl[o + 2], ctrl[o + 3]]); r = (r + 1) | 0; deliverSoon = true; continue; }
         ev.x = ctrl[o + 1]; ev.y = ctrl[o + 2]; ev.button = ctrl[o + 3]; ev.vk = ctrl[o + 4]; ev.char = ctrl[o + 5] || undefined;
         if ((self as any).__dbgInput && ev.type !== 'mousemove') post({ t: 'log', s: `input ${ev.type} ${ev.x},${ev.y} b=${ev.button} vk=${ev.vk}` });
         out.push(ev); r = (r + 1) | 0;
       }
       Atomics.store(ctrl, CTRL.EVREAD, r);
+      if (deliverSoon) { deliverSoon = false; deliverNow(); }
       return out;
     },
     present(rgba, w, h, _pal, cursor: CursorImage | null) {

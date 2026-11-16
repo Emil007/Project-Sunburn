@@ -10,10 +10,7 @@
   "shader": "sepia.glsl",
   "script": "script.js",
   "conflicts": [
-    "filter-sharp",
-    "filter-smooth",
-    "filter-crt",
-    "filter-edge"
+    "display-filter"
   ],
   "settings": [
     {

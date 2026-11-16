@@ -8,14 +8,14 @@
 
 You need your own Holiday Island CD (English or German) as a disc image. No game data is included.
 
-<p align="center">
-  <img src="docs/screenshots/game-desktop.png" alt="Holiday Island with the large island view and a bigger desktop: the overview map and the finance window open next to the map" width="100%">
-</p>
-
-| The original, as in 1996 | Launcher with disc library and mods |
+| The original (1996) | Project Sunburn, with mods |
 |---|---|
-| <img src="docs/screenshots/vanilla-game.png" alt="Holiday Island at its original 640×480" width="100%"> | <img src="docs/screenshots/launcher.png" alt="The launcher" width="100%"> |
-| <img src="docs/screenshots/vanilla-menu.png" alt="The new-game menu" width="100%"> | <img src="docs/screenshots/menu-desktop.png" alt="The new-game menu on a bigger desktop" width="100%"> |
+| <img src="docs/screenshots/vanilla-windows.png" alt="The original: the island fills the 640×480 screen and the general map and finance windows cover it" width="100%"> | <img src="docs/screenshots/game-desktop.png" alt="With mods: a bigger island view, and the general map and finance windows next to it" width="100%"> |
+| 640×480, the island fills the screen and every window covers it | Bigger island view, windows sit next to it and can be moved anywhere |
+| <img src="docs/screenshots/vanilla-menu.png" alt="The original new-game menu" width="100%"> | <img src="docs/screenshots/menu-desktop.png" alt="The new-game menu on a bigger desktop" width="100%"> |
+| The new-game menu at 640×480 | The same menu on your full screen |
+
+<p align="center"><img src="docs/screenshots/launcher.png" alt="The launcher with the disc library and the mods" width="60%"><br><em>The launcher: your discs, mods and settings</em></p>
 
 > **Disclaimer: 100% AI.** This port (the Win16 runtime, the launcher, the mods, the tools and this
 > documentation) was written entirely by an AI (Claude, by Anthropic), directed and tested by a human.
@@ -55,15 +55,15 @@ files and keeps only the image. Where it works:
   download the file yourself and drop it in, or set up the optional [download proxy](tools/cors-proxy).
 
 ### Windows
-Extract `ProjectSunburn-<version>-win-x64.zip` (or `-arm64`) and start `Project Sunburn.exe`.
+Extract `ProjectSunburn-<version>-Windows-x64.zip` (or `-arm64`) and start `Project Sunburn.exe`.
 
 ### macOS
-Open `ProjectSunburn-<version>-mac-arm64.dmg` (Apple Silicon) or `-x64.dmg` (Intel) and drag the app to
+Open `ProjectSunburn-<version>-macOS-arm64.dmg` (Apple Silicon) or `-x64.dmg` (Intel) and drag the app to
 Applications. The app isn't notarized by Apple: the first time, right-click it → **Open**, or run
 `xattr -cr "/Applications/Project Sunburn.app"`.
 
 ### Linux, Steam Deck and Linux handhelds
-Run `ProjectSunburn-<version>-linux-x86_64.AppImage` (`chmod +x` first), or extract the `.tar.gz` and
+Run `ProjectSunburn-<version>-Linux-x86_64.AppImage` (`chmod +x` first), or extract the `.tar.gz` and
 run `project-sunburn`. ARM64 builds (Raspberry Pi, ARM handhelds) are included as `-arm64`.
 On the Steam Deck, add the AppImage to Steam as a non-Steam game. With the **Gamepad controls** mod
 (on by default):
@@ -96,12 +96,49 @@ the desktop app, between devices, and to or from the original game's `MAPS` fold
 
 ### Controls & options
 * **F11**: fullscreen. **F10**: menu (scaling, aspect, volumes, video quality, fullscreen, quit to launcher).
+* **F9**: cheat menu (see [Cheats](#cheats)).
 * The picture is never scaled down: game pixels are shown 1:1 (or 2×, 3× … when there is room, and
   on high‑DPI screens). A smaller window shows less of the screen instead of a smaller, blurry
   picture, and game windows that would end up outside are moved back into view. "Fit to window"
   under Settings → Scaling restores free scaling.
 * The game's own options (music track, volumes, game speed …) work as in the original.
 * Game windows can be dragged by their title bar, as in the original.
+
+### Cheats
+**F9** in a running game opens the cheat menu. It changes the game through the game's own data and
+routines, so everything that follows (news, auctions, bankruptcies) happens by the game's rules:
+
+| Cheat | What it does |
+|---|---|
+| +1 million / +1 billion | Money, like the original cheat but without its penalty. |
+| Freeze money | Your balance stays the same whatever you spend. |
+| Original cheat without penalty | The original money cheat (hold **Ctrl + Shift + Alt** and press **G**) marks your game and you can no longer win. With this on you still can. |
+| Buildings: unlock next / all | The buildings that otherwise appear during the game (villas, the named hotels, clubs, …). |
+| Attractions: start next auction / all | Start the next landmark auction (it begins the next day), or put every landmark (Stonehenge, Eiffel Tower, …) into the Attractions menu at its auction starting price. |
+| Fast-forward a week / month / year | The game runs at high speed until the date is reached, so construction, tourists, money and events all happen as usual. |
+| Freeze time | The clock stops: no new days, construction waits. |
+| Rivals: bankrupt | Pick one computer player by name. They go bankrupt by the game's own rules and their property is auctioned. You can't pick yourself. |
+
+Cheats from the menu never cost you the win. The game also has a hidden developer key in the German
+release: **Ctrl + Shift + Alt + N / M** make the game clock faster or slower.
+
+## RecompLauncher
+[RecompLauncher](https://github.com/elripalda/RecompLauncher) can install, update and start Project
+Sunburn (Windows and Linux): every release carries a `recomplauncher.json`. Drop in your disc image, and
+the launcher checks it, shows the settings below on the game's page and starts the game straight away.
+Saves go to `Documents/Project Sunburn/Saves`, so the launcher's backups and cloud saves include them.
+
+Known good disc images (shown as verified):
+
+| Image | Size | CRC32 | MD5 |
+|---|---|---|---|
+| German release (Bomico), `.iso` (archive.org) | 210,239,488 | `01c52522` | `27f9164bcdabdd6cc748dccf46324a94` |
+| English release, `.mdf` (with its `.mds`) | 414,510,048 | `130c7f4b` | `6ab6ea37183f0d755fb4a520aad7956b` |
+
+The desktop app takes the same options on the command line (for shortcuts and other front-ends):
+`--disc <image>` (play it; added to the library once), `--launcher` (show the launcher instead),
+`--fullscreen` / `--windowed`, `--set scale=fit` (also `aspect`, `video`, `music`, `sfx`, `musicSrc`, `ui`),
+`--mod large-view=on`, `--modset display-filter.style=crt`. A disc image dropped on the program starts it.
 
 ## Original game + mods
 Without mods the port shows the game as it was in 1996: 640×480, 256 colours, pixels scaled with plain
@@ -111,8 +148,7 @@ next start.
 
 | Mod | What it does |
 |---|---|
-| Sharp pixels *(recommended)* | Even, square pixels at any scale (integer prescale + bilinear). |
-| Smooth / CRT monitor / Edge smoothing (Scale4x) | Alternative screen filters. |
+| Screen filter *(recommended)* | How the picture is scaled: Sharp (even, square pixels at any scale), Smooth, Edge smoothing (Scale4x) or CRT monitor. |
 | True‑colour video *(recommended)* | Films decoded in true colour instead of dithered to 256 colours. |
 | Large island view *(experimental)* | The main map fills a bigger window (800×600 up to 2560×1440). The map renderer, mouse picking, window chrome and the desktop background are patched by signature, and saves stay compatible with the original. Optional **desktop**: the screen is bigger than the map window, so the game's windows (finances, overview map, …) open next to the map instead of on top of it, and every window, the map included, can be dragged around. |
 | Modern menus *(recommended)* | Drop shadows, fade‑in, optional dimming behind game windows. |
@@ -120,8 +156,6 @@ next start.
 | Quality of life *(recommended)* | Scroll the island with the mouse wheel or by dragging with the right mouse button, optional edge scrolling. |
 | Autosave *(recommended)* | Saves on the 1st of every in‑game month as `AUTOyymm` and keeps the newest 5 (adjustable). Load them like any other save. |
 | Game speed *(recommended)* | Three buttons in front of the date, drawn in the game's own style: ▶ normal, ▶▶ 2×, ▶▶▶ 5×, with tooltips. |
-| Unlock all buildings | Off by default. Every building is in the build menus from day one instead of appearing during the game. Optional: build the auction landmarks (Stonehenge, Eiffel Tower, …) from the Attractions menu at their auction starting price. |
-| Cheat without penalty | Off by default. The original money cheat (hold **Ctrl + Shift + Alt** and press **G**: +1,000,000,000) marks your game and you can no longer win. With this mod you keep the money and can still win. |
 | Skip intros | Skip the intro film and/or the flight to the island after Start. |
 | Custom SoundFont | Play the music with your own .sf2/.sf3. |
 | Currency | Replace DM / £ in all game texts, e.g. with € (also $, ¥, CHF, öS, ₿, custom). Missing symbols are drawn into the game's own bitmap font. |

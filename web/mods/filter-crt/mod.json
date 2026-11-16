@@ -1,4 +1,0 @@
-{ "id": "filter-crt", "name": "CRT monitor", "name_de": "Röhrenmonitor", "version": "1.0", "author": "Project Sunburn", "category": "Graphics",
-  "description": "Scanlines, a soft phosphor glow and slight vignetting, like a 1996 15\" monitor.", "description_de": "Scanlines, leichtes Leuchten und Vignette wie auf einem 15-Zoll-Monitor von 1996.",
-  "shader": "crt.glsl", "conflicts": ["filter-sharp", "filter-smooth", "filter-edge"],
-  "settings": [ { "key": "strength", "type": "range", "label": "Scanline strength", "label_de": "Scanline-Stärke", "min": 0, "max": 100, "default": 45 } ] }

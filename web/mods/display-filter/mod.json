@@ -1,0 +1,10 @@
+{ "id": "display-filter", "name": "Screen filter", "name_de": "Bildfilter", "version": "1.0", "author": "Project Sunburn", "category": "Graphics",
+  "description": "How the 640×480 picture is scaled to your screen. Sharp: no blur and even pixels. Smooth: soft bilinear look. Edge smoothing: rounds off staircase edges of sprites and fonts (Scale4x). CRT monitor: scanlines, glow and vignette like a 1996 15\" monitor.",
+  "description_de": "Wie das 640×480-Bild auf deinen Bildschirm skaliert wird. Scharf: ohne Unschärfe, gleichmäßige Pixel. Weich: bilinear. Kantenglättung: glättet Treppenkanten bei Sprites und Schrift (Scale4x). Röhrenmonitor: Scanlines, Leuchten und Vignette wie auf einem 15-Zoll-Monitor von 1996.",
+  "shader": "{style}.glsl", "recommended": true,
+  "settings": [
+    { "key": "style", "type": "select", "label": "Filter", "label_de": "Filter", "default": "sharp",
+      "options": [ { "value": "sharp", "label": "Sharp", "label_de": "Scharf" }, { "value": "smooth", "label": "Smooth", "label_de": "Weich" },
+                   { "value": "edge", "label": "Edge smoothing (Scale4x)", "label_de": "Kantenglättung (Scale4x)" }, { "value": "crt", "label": "CRT monitor", "label_de": "Röhrenmonitor" } ] },
+    { "key": "strength", "type": "range", "label": "Scanline strength (CRT)", "label_de": "Scanline-Stärke (Röhrenmonitor)", "min": 0, "max": 100, "default": 45, "when": { "style": "crt" } }
+  ] }

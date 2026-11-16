@@ -12,7 +12,7 @@ export const CTRL = {
 };
 export const EV_BASE = 64, EV_SIZE = 8, EV_CAP = 512;
 export const CTRL_INTS = EV_BASE + EV_SIZE * EV_CAP;
-export const EVT = { mousemove: 1, mousedown: 2, mouseup: 3, keydown: 4, keyup: 5, quit: 6 } as const;
+export const EVT = { mousemove: 1, mousedown: 2, mouseup: 3, keydown: 4, keyup: 5, quit: 6, modcmd: 7 } as const;
 export const FRAME_MAX = 3840 * 2160 * 4;
 export const CURSOR_MAX = 64 * 64 * 4;
 

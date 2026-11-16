@@ -50,6 +50,7 @@ export async function loadCatalogue() {
       } catch (e) { console.warn('bad mod', id, e); }
     }
   }
+  migrate();
   if (!modState.initialized) { applyPreset('recommended'); modState.initialized = true; }
   else {
     // recommended mods that arrived with an update are switched on once (unless the player chose "Original")
@@ -60,9 +61,26 @@ export async function loadCatalogue() {
   saveModState();
 }
 
+// mods that were merged or moved: keep the player's choice
+function migrate() {
+  const en = modState.enabled; let changed = false;
+  // cheats moved from mods to the F9 cheat menu
+  for (const old of ['cheat-without-penalty', 'unlock-buildings']) if (old in en) { delete en[old]; delete modState.settings[old]; changed = true; }
+  const styles: Record<string, string> = { 'filter-sharp': 'sharp', 'filter-smooth': 'smooth', 'filter-edge': 'edge', 'filter-crt': 'crt' };
+  for (const [old, style] of Object.entries(styles)) {
+    if (!(old in en)) continue;
+    if (en[old]) { en['display-filter'] = true; (modState.settings['display-filter'] ||= {}).style = style; }
+    else if (!('display-filter' in en)) en['display-filter'] = false;
+    if (old === 'filter-crt' && modState.settings[old]?.strength !== undefined) (modState.settings['display-filter'] ||= {}).strength = modState.settings[old].strength;
+    delete en[old]; delete modState.settings[old]; changed = true;
+  }
+  // after the filters are migrated: if any filter was on, display-filter is on
+  if (changed) { modState.seen = [...new Set([...(modState.seen || []), 'display-filter'])]; saveModState(); }
+}
+
 export function applyPreset(p: 'original' | 'recommended') {
   modState.enabled = {};
-  if (p === 'recommended') for (const [id, e] of catalogue) if (e.manifest.recommended) modState.enabled[id] = true;
+  if (p === 'recommended') for (const [id, e] of catalogue) if (e.manifest.recommended && !e.manifest.hidden) modState.enabled[id] = true;
   saveModState();
 }
 
@@ -97,7 +115,7 @@ async function readSettingFile(id: string, key: string): Promise<Uint8Array | nu
 
 const isLangOk = (m: ModManifest, lang: string) => !m.languages || !m.languages.length || m.languages.includes(lang as any);
 export const enabledMods = (lang: string) => [...catalogue.values()]
-  .filter((e) => modState.enabled[e.manifest.id] && isLangOk(e.manifest, lang))
+  .filter((e) => (modState.enabled[e.manifest.id] || (e.builtin && e.manifest.hidden)) && isLangOk(e.manifest, lang))
   .sort((a, b) => (a.manifest.priority ?? 0) - (b.manifest.priority ?? 0));
 export { isLangOk };
 

@@ -1,4 +1,0 @@
-{ "id": "filter-sharp", "name": "Sharp scaling", "name_de": "Scharfe Skalierung", "version": "1.0", "author": "Project Sunburn", "category": "Graphics",
-  "description": "Scales the 640×480 picture to any window size without blur or uneven pixels (sharp-bilinear).",
-  "description_de": "Skaliert das 640×480-Bild verlustarm auf jede Fenstergröße – ohne Unschärfe und ungleichmäßige Pixel (Sharp-Bilinear).",
-  "shader": "sharp.glsl", "recommended": true, "conflicts": ["filter-smooth", "filter-crt", "filter-edge"] }

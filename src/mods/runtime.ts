@@ -34,6 +34,9 @@ export class ModRuntime {
   fileHooks: FileHook[] = [];
   loadHooks: { mod: string; fn: LoadHook }[] = [];
   tickHooks: ((now: number) => void)[] = [];
+  /** commands from ui.js scripts ([mod index, command, argument]), delivered in tick() */
+  pendingCommands: [number, number, number][] = [];
+  commandHooks = new Map<string, ((cmd: number, arg: number) => void)[]>();
   apiWraps: { name: string; fn: (args: number[], orig: (a: number[]) => any) => any }[] = [];
   startHooks: (() => void)[] = [];
   drawHooks: ((px: Uint32Array, w: number, h: number) => void)[] = [];
@@ -82,13 +85,15 @@ export class ModRuntime {
       onLoad: (fn: LoadHook) => { rt.loadHooks.push({ mod: id, fn }); },
       onStart: (fn: () => void) => { rt.startHooks.push(fn); },
       onTick: (fn: (now: number) => void) => { rt.tickHooks.push(fn); },
+      onCommand: (fn: (cmd: number, arg: number) => void) => { (rt.commandHooks.get(id) || rt.commandHooks.set(id, []).get(id)!).push(fn); },
+      getSpeed: () => rt.w.user.timerScale,
       wrapApi: (name: string, fn: (args: number[], orig: (a: number[]) => any) => any) => { rt.apiWraps.push({ name, fn }); },
       compositor: (o: CompositorOptions) => { Object.assign(rt.compositor, o); },
       get win16() { return rt.w; },
       get mem() { return rt.memApi(); },
       windows: () => rt.windows(),
       // game speed: the game's short timers (its tick) run this many times faster (1 = normal)
-      setSpeed: (f: number, onlyInterval = 0) => { rt.w.user.timerScale = Math.max(0.25, Math.min(10, +f || 1)); rt.w.user.timerScaleOnly = Math.max(0, onlyInterval | 0); },
+      setSpeed: (f: number, onlyInterval = 0) => { rt.w.user.setTimerScale(f === 0 ? 0 : Math.max(0.25, Math.min(100, +f || 1)), Math.max(0, onlyInterval | 0)); },
       // draw on top of the composed frame: fn(pixels: Uint32Array ABGR, width, height)
       onDraw: (fn: (px: Uint32Array, w: number, h: number) => void) => { rt.drawHooks.push(fn); if (rt.w) rt.w.drawHooks.push(fn); },
       // see input before the game: fn({ type: 'mousemove'|'mousedown'|'mouseup'|'keydown'|'keyup', x, y, button, vk }) -> true to consume
@@ -110,7 +115,7 @@ export class ModRuntime {
   memApi() {
     const mem = this.w.m.mem;
     return {
-      lin: (sel: number, off: number) => mem.lin(sel, off),
+      lin: (sel: number, off: number) => mem.lin(sel, off), u8: mem.u8,
       r8: (sel: number, off: number) => mem.u8[mem.lin(sel, off)], r16: (sel: number, off: number) => mem.r16(mem.lin(sel, off)),
       w8: (sel: number, off: number, v: number) => { mem.u8[mem.lin(sel, off)] = v; }, w16: (sel: number, off: number, v: number) => mem.w16(mem.lin(sel, off), v),
       ds: () => this.w.mainModule.autoDS, seg: (n: number) => this.w.mainModule.segSels[n - 1],
@@ -210,5 +215,17 @@ export class ModRuntime {
     for (const h of this.loadHooks) { try { h.fn(ctx(h.mod)); } catch (e: any) { this.log(`[${h.mod}] onLoad error: ${e?.message || e}`); } }
     for (const h of this.startHooks) { try { h(); } catch (e: any) { this.log(`onStart error: ${e?.message || e}`); } }
   }
-  tick(now: number) { for (const t of this.tickHooks) { try { t(now); } catch (e: any) { this.log(`tick error: ${e?.message || e}`); } } }
+  /** deliver commands from ui.js now; also called while the game waits for messages (a paused game never leaves GetMessage) */
+  deliverCommands() {
+    if (!this.pendingCommands.length) return;
+    while (this.pendingCommands.length) {
+      const [i, cmd, arg] = this.pendingCommands.shift()!; const id = this.mods[i]?.manifest.id;
+      for (const fn of (id && this.commandHooks.get(id)) || []) { try { fn(cmd, arg); } catch (e: any) { this.log(`[${id}] command error: ${e?.message || e}`); } }
+    }
+    // wake the game's message loop so work the mod queued for it runs now
+    // (no wake-up message: the work runs on the next GetMessage/PeekMessage)
+  }
+  tick(now: number) {
+    this.deliverCommands();
+    for (const t of this.tickHooks) { try { t(now); } catch (e: any) { this.log(`tick error: ${e?.message || e}`); } } }
 }

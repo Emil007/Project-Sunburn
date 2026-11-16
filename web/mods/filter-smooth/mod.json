@@ -1,3 +1,0 @@
-{ "id": "filter-smooth", "name": "Smooth scaling", "name_de": "Weiche Skalierung", "version": "1.0", "author": "Project Sunburn", "category": "Graphics",
-  "description": "Plain bilinear texture filtering – soft look, no visible pixels.", "description_de": "Bilineare Texturfilterung – weicher Look, keine sichtbaren Pixel.",
-  "shader": "smooth.glsl", "conflicts": ["filter-sharp", "filter-crt", "filter-edge"] }

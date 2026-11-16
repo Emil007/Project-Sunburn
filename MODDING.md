@@ -44,7 +44,7 @@ The built-in mods are in `mods/` in the source tree. They're the best examples.
   "ui": "ui.js",
   "soundfont": "music.sf2",
   "priority": 0,
-  "conflicts": ["filter-crt"],
+  "conflicts": ["display-filter"],
   "experimental": false,
   "settings": [
     { "key": "amount", "type": "range", "label": "Strength", "label_de": "Stärke", "min": 0, "max": 100, "default": 80 }
@@ -75,7 +75,8 @@ Settings are shown under the mod's switch and passed to all of its parts.
 | `text` | string | |
 | `file` | the chosen file's name. The file itself is `@setting/<key>` in the mod's files. | `accept`, e.g. `".sf2,.sf3"` |
 
-All of them take `label`, optional `label_de` and `default`.
+All of them take `label`, optional `label_de` and `default`. Add `"when": { "style": "crt" }` to
+show a setting only while other settings of the mod have those values.
 
 Settings take effect when the game starts.
 
@@ -123,6 +124,9 @@ vec4 filter(sampler2D tex, vec2 uv, vec2 texSize, vec2 outSize) {
 * Range, toggle and numeric select settings arrive as `uniform float u_<key>` (toggles: 0/1).
 * Only one filter runs at a time: the enabled one with the highest `priority`. Declare the other
   filters in `conflicts` so the launcher switches them off.
+* One mod can offer several filters: write the file name with a setting in braces, e.g.
+  `"shader": "{style}.glsl"` and a select setting `style` with the values `sharp`, `crt`, …
+  (the built-in *Screen filter* mod works this way).
 * If the shader doesn't compile, the game runs without a filter and the error is in the browser
   console (F12).
 
@@ -159,6 +163,9 @@ api.setSpeed(f, ms)  // speed factor 0.25 … 10 for the timers with interval ms
 api.onDraw((px, w, h) => { … })  // draw on top of each presented frame (Uint32Array RGBA, w×h)
 api.onInput((e) => consumed)     // see input before the game: { type, x, y, button, vk }; return true to swallow it
 api.redraw()     // present a new frame now (e.g. after your onDraw output changed)
+api.getSpeed()   // the current speed factor (0 = the game clock is stopped by api.setSpeed(0, ms))
+api.onCommand((cmd, arg) => { … })  // commands from this mod's ui.js (api.command)
+api.mem.u8      // all of the emulator's memory as a Uint8Array (api.mem.lin(sel, off) gives the index)
 ```
 
 `onFile` paths are upper-case and drive-relative, e.g. `drive === 'D'`, `path === 'GRAFIK\\BUTTON.BMP'`.
@@ -221,6 +228,8 @@ api.screen()                              // { w, h } game resolution
 api.visible()                             // { x, y, w, h } part of the screen inside the window
 api.file(path), api.text(path)            // files of the mod package
 api.onMessage((data) => …)                // data sent by the mod's script.js via api.toUI
+api.command(cmd, arg)                     // two whole numbers for the mod's script.js (api.onCommand)
+api.onKey((e) => handled)                 // keyboard events before the game; return true to keep them from the game
 api.overlay()                             // a <div> over the game (pointer-events: none) for your own HTML
 ```
 

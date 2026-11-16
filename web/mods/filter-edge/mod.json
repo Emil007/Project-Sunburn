@@ -1,3 +1,0 @@
-{ "id": "filter-edge", "name": "Edge smoothing (Scale4x)", "name_de": "Kantenglättung (Scale4x)", "version": "1.0", "author": "Project Sunburn", "category": "Graphics",
-  "description": "Pixel-art upscaler: rounds off staircase edges of sprites and fonts (EPX/Scale4x) and blends the result smoothly.", "description_de": "Pixel-Art-Upscaler: glättet Treppenkanten bei Sprites und Schrift (EPX/Scale4x) und blendet weich.",
-  "shader": "scale4x.glsl", "conflicts": ["filter-sharp", "filter-smooth", "filter-crt"] }
